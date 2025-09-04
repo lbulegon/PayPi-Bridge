@@ -1,5 +1,5 @@
 flowchart LR
-    A[Pi Wallet (User)] -->|Pay Pi| B[Soroban Contract<br/>PiBridge]
+    A[Pi Wallet (User)] -->|Pay Pi| B[Soroban Contract<br/>PayPiBridge]
     B -->|Event| C[CCIP / Relayer]
     C -->|Webhook (HMAC)| D[Backend Django/DRF]
     D -->|Payments Initiation| E[Open Finance APIs]

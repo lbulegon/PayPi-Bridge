@@ -3,12 +3,12 @@
 use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Symbol, Vec, BytesN, Map};
 
 #[contract]
-pub struct PiBridge;
+pub struct PayPiBridge;
 
 const INTENTS: Symbol = symbol_short!("INTS");
 
 #[contractimpl]
-impl PiBridge {
+impl PayPiBridge {
     pub fn create_intent(env: Env, payer: Address, payee: Address, amount_pi: i128, ttl_secs: u64) -> BytesN<32> {
         payer.require_auth();
         let now = env.ledger().timestamp();

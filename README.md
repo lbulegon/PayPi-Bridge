@@ -1,4 +1,4 @@
-# PiBridge Pay — Blueprint (Pi → CCIP/Relayer → Open Finance → Bancos)
+# PayPiBridge Pay — Blueprint (Pi → CCIP/Relayer → Open Finance → Bancos)
 
 Gateway de On/Off-Ramp para converter pagamentos em **Pi** em **moeda fiduciária**,
 com confirmação via evento (relayer/CCIP) e liquidação bancária por **Open Finance**.
@@ -12,10 +12,10 @@ com confirmação via evento (relayer/CCIP) e liquidação bancária por **Open 
 - postman/ (coleção para testes)
 
 ## Quickstart (dev)
-1. Crie um projeto Django e adicione `backend/app/pibridge` como app.
+1. Crie um projeto Django e adicione `backend/app/paypibridge` como app.
 2. `pip install -r backend/requirements.txt`
 3. Copie `.env.example` para `.env` e preencha.
-4. Inclua `path("api/", include("pibridge.urls")),` no seu `urls.py` raiz.
+4. Inclua `path("api/", include("paypibridge.urls")),` no seu `urls.py` raiz.
 5. Rode migrações e teste com a coleção Postman.
 
 ## Fluxo alto nível
