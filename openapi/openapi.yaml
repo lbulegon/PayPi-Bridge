@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: PiBridge Pay API
+  version: 0.1.0
+paths:
+  /checkout/pi-intent:
+    post:
+      summary: Create local PaymentIntent (to be tied to on-chain)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payee_user_id: { type: integer }
+                amount_pi: { type: number, format: double }
+                metadata: { type: object }
+      responses:
+        '201': { description: Created }
+  /webhooks/ccip:
+    post:
+      summary: CCIP/Relayer event webhook (HMAC)
+      responses:
+        '200': { description: ok }
+  /payouts/pix:
+    post:
+      summary: Create a payout using Open Finance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payee_user_id: { type: integer }
+                amount_brl: { type: number, format: double }
+                cpf: { type: string }
+                pix_key: { type: string }
+                description: { type: string }
+      responses:
+        '200': { description: tx created }

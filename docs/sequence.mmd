@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant U as User (Payer)
+    participant D as DApp / Merchant
+    participant SC as Soroban Contract (PiBridge)
+    participant RL as CCIP/Relayer
+    participant BE as Backend (Django)
+    participant OF as Open Finance / Pix
+    participant BK as Bank
+
+    U->>D: Scan QR (Pi amount)
+    D->>SC: create_intent(payer, payee, amount, ttl)
+    SC-->>RL: Event: IntentCreated(id, payer, payee, amount, ttl)
+    RL->>BE: POST /webhooks/ccip (id, amount, fx_quote, payee_user_id) [HMAC]
+    BE->>BE: Validate idempotency + HMAC
+    BE->>OF: Create payment (Payments Initiation)
+    OF->>BK: Process payment
+    BK-->>OF: SETTLED
+    OF-->>BE: status=SETTLED (e2eid/txid)
+    BE-->>D: Update order -> SETTLED
+    BE-->>SC: (optional) off-chain attest / confirm_delivery

@@ -1,0 +1,38 @@
+{
+    "info": {
+      "name": "PiBridge Pay",
+      "_postman_id": "f1e5a8e1-0000-4000-8000-abcdefabcdef",
+      "version": "1.0.0",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Create Pi Intent",
+        "request": {
+          "method": "POST",
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "url": {"raw": "http://localhost:8000/api/checkout/pi-intent", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api","checkout","pi-intent"]},
+          "body": {"mode":"raw","raw": "{\"payee_user_id\":1,\"amount_pi\":\"10.5\",\"metadata\":{\"order_id\":\"ABC123\"}}"}
+        }
+      },
+      {
+        "name": "CCIP Webhook (dev)",
+        "request": {
+          "method": "POST",
+          "header": [{"key":"Content-Type","value":"application/json"},{"key":"X-Signature","value":"<computed-hmac>"}],
+          "url": {"raw":"http://localhost:8000/api/webhooks/ccip", "protocol":"http","host":["localhost"],"port":"8000","path":["api","webhooks","ccip"]},
+          "body": {"mode":"raw","raw": "{\"intent_id\":\"pi_123\",\"fx_quote\":{\"brl_amount\":\"52.30\"},\"payee_user_id\":1}"}
+        }
+      },
+      {
+        "name": "Pix Payout",
+        "request": {
+          "method": "POST",
+          "header": [{"key": "Content-Type", "value": "application/json"}],
+          "url": {"raw": "http://localhost:8000/api/payouts/pix", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api","payouts","pix"]},
+          "body": {"mode":"raw","raw": "{\"payee_user_id\":1,\"amount_brl\":\"50.00\",\"cpf\":\"00000000191\",\"pix_key\":\"email@example.com\",\"description\":\"Order ABC123\"}"}
+        }
+      }
+    ]
+  }
+  
