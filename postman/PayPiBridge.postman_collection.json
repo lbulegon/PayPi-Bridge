@@ -11,7 +11,7 @@
         "request": {
           "method": "POST",
           "header": [{"key": "Content-Type", "value": "application/json"}],
-          "url": {"raw": "http://localhost:8000/api/checkout/pi-intent", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api","checkout","pi-intent"]},
+          "url": {"raw": "http://localhost:9080/api/checkout/pi-intent", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api","checkout","pi-intent"]},
           "body": {"mode":"raw","raw": "{\"payee_user_id\":1,\"amount_pi\":\"10.5\",\"metadata\":{\"order_id\":\"ABC123\"}}"}
         }
       },
@@ -20,7 +20,7 @@
         "request": {
           "method": "POST",
           "header": [{"key":"Content-Type","value":"application/json"},{"key":"X-Signature","value":"<computed-hmac>"}],
-          "url": {"raw":"http://localhost:8000/api/webhooks/ccip", "protocol":"http","host":["localhost"],"port":"8000","path":["api","webhooks","ccip"]},
+          "url": {"raw":"http://localhost:9080/api/webhooks/ccip", "protocol":"http","host":["localhost"],"port":"8000","path":["api","webhooks","ccip"]},
           "body": {"mode":"raw","raw": "{\"intent_id\":\"pi_123\",\"fx_quote\":{\"brl_amount\":\"52.30\"},\"payee_user_id\":1}"}
         }
       },
@@ -29,7 +29,7 @@
         "request": {
           "method": "POST",
           "header": [{"key": "Content-Type", "value": "application/json"}],
-          "url": {"raw": "http://localhost:8000/api/payouts/pix", "protocol": "http", "host": ["localhost"], "port": "8000", "path": ["api","payouts","pix"]},
+          "url": {"raw": "http://localhost:9080/api/payouts/pix", "protocol": "http", "host": ["localhost"], "port": "8001", "path": ["api","payouts","pix"]},
           "body": {"mode":"raw","raw": "{\"payee_user_id\":1,\"amount_brl\":\"50.00\",\"cpf\":\"00000000191\",\"pix_key\":\"email@example.com\",\"description\":\"Order ABC123\"}"}
         }
       }

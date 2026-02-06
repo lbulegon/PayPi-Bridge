@@ -87,6 +87,7 @@ STATICFILES_FINDERS = [
 # ========== MIDDLEWARE ==========
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "app.paypibridge.middleware.logging.RequestIDMiddleware",  # Adiciona request ID
     "whitenoise.middleware.WhiteNoiseMiddleware",  # <- antes de CommonMiddleware
     "config.middleware.RailwayHostValidationMiddleware",  # Validação customizada de hosts Railway
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -94,6 +95,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "app.paypibridge.middleware.logging.StructuredLoggingMiddleware",  # Logging estruturado
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -153,12 +155,42 @@ LOGIN_URL = "/admin/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-# ========== LOGGING (dev) ==========
+# ========== LOGGING (structured) ==========
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": "INFO"},
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "structured": {
+            "format": "{levelname} {asctime} request_id={request_id} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "app.paypibridge": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
 }
 
 # ========== AUTH / DRF / JWT ==========

@@ -1,9 +1,11 @@
 import os, hmac, hashlib
 from rest_framework import status, views
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from decimal import Decimal
+from django_ratelimit.decorators import ratelimit
+from django.utils.decorators import method_decorator
 
 from django.contrib.auth import get_user_model
 from .models import PaymentIntent, PixTransaction, Consent, BankAccount
@@ -16,6 +18,7 @@ from .serializers import (
 from .clients.pix import PixClient
 from .services.pi_service import get_pi_service
 from .services.consent_service import get_consent_service
+from .permissions import IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly
 
 
 def _verify_hmac(body: bytes, signature: str, secret: str) -> bool:
@@ -35,8 +38,13 @@ class IntentView(views.APIView):
     """
     Create a PaymentIntent for Pi → BRL conversion.
     This creates a local intent that will be tied to an on-chain Soroban contract.
+    Rate limited to prevent abuse.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [AllowAny]  # Keep AllowAny for public checkout, but rate limit
+    
+    @method_decorator(ratelimit(key='ip', rate='30/m', method='POST'))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def post(self, request):
         s = CreateIntentSerializer(data=request.data)
@@ -321,10 +329,14 @@ class PiBalanceView(views.APIView):
 
 class ConsentView(views.APIView):
     """
-    Create a new Open Finance consent (POST) or list user's consents (GET).
-    Sem autenticação: use user_id no body (POST) ou query (GET), default 1.
+    Manage Open Finance consents.
+    Requires authentication.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    
+    @method_decorator(ratelimit(key='ip', rate='20/m', method='POST'))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
 
     def post(self, request):
         s = CreateConsentSerializer(data=request.data)

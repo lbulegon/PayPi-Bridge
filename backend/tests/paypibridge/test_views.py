@@ -2,15 +2,25 @@
 Tests for PayPiBridge views.
 """
 
+import os
+import json
+import hmac
+import hashlib
+from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from decimal import Decimal
-from app.paypibridge.models import PaymentIntent, Consent
+from app.paypibridge.models import PaymentIntent, Consent, WebhookEvent
 
 User = get_user_model()
+
+
+def _ccip_sign(body: bytes, secret: str) -> str:
+    """Helper function to sign CCIP webhook body."""
+    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
 
 
 class IntentViewTest(TestCase):
