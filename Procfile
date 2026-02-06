@@ -1,1 +1,1 @@
-web: gunicorn ${DJANGO_WSGI_MODULE:-config.wsgi}:application --bind 0.0.0.0:${PORT:-8000}
+web: daphne -b 0.0.0.0 -p $PORT setup.asgi:application
