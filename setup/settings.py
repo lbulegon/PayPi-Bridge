@@ -17,13 +17,24 @@ SECRET_KEY = os.getenv("DJANGO_SECRET", "insecure-change-me")
 ENV = os.getenv("ENV", "dev").lower()
 DEBUG = ENV != "prod"
 
-allowed_hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "")
+allowed_hosts_env = os.getenv("DJANGO_ALLOWED_HOSTS", "").strip()
+railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
 if allowed_hosts_env:
     ALLOWED_HOSTS = [
         host.strip() for host in allowed_hosts_env.split(",") if host.strip()
     ]
+elif railway_domain:
+    ALLOWED_HOSTS = [railway_domain]
 else:
-    ALLOWED_HOSTS = ["*"] if DEBUG else []
+    ALLOWED_HOSTS = ["*"] if DEBUG else ["*"]
+
+csrf_trusted_env = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").strip()
+if csrf_trusted_env:
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip()
+        for origin in csrf_trusted_env.split(",")
+        if origin.strip()
+    ]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -94,6 +105,8 @@ def _database_from_url(url: str):
 
 
 db_url = os.getenv("DB_URL", "").strip()
+if not db_url:
+    db_url = os.getenv("DATABASE_URL", "").strip()
 db_config = _database_from_url(db_url) if db_url else None
 if db_config:
     DATABASES = {"default": db_config}
@@ -120,6 +133,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
