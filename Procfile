@@ -1,1 +1,1 @@
-web: daphne -b 0.0.0.0 -p $PORT setup.asgi:application
+web: gunicorn setup.wsgi:application --bind 0.0.0.0:${PORT:-8000}
