@@ -34,10 +34,14 @@ if not DEBUG:
 _allowed = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").strip().split(",")
 if "69.169.102.84" not in _allowed:
     _allowed.append("69.169.102.84")
+
+# Lista base de hosts permitidos
+# Django aceita hosts que começam com ponto para permitir subdomínios
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    '*.railway.app',  # Permite qualquer subdomínio do Railway
+    '.railway.app',  # Permite qualquer subdomínio do Railway (Django valida corretamente)
+    'paypi-bridge-development.up.railway.app',  # Domínio específico do Railway
 ] + [h.strip() for h in _allowed if h.strip()]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -84,6 +88,7 @@ STATICFILES_FINDERS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # <- antes de CommonMiddleware
+    "config.middleware.RailwayHostValidationMiddleware",  # Validação customizada de hosts Railway
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # CORS antes de CommonMiddleware
     "django.middleware.common.CommonMiddleware",
