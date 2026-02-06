@@ -4,7 +4,8 @@ from .views import (
     VerifyPiPaymentView, PiBalanceView, PiStatusView,
     ConsentView, ConsentDetailView,
     LinkBankAccountView, ReconcilePaymentView,
-    FXQuoteView, RelayerStatusView
+    FXQuoteView, RelayerStatusView,
+    PiNetworkWebhookView, HealthCheckView, TestEndpointsView
 )
 
 urlpatterns = [
@@ -15,9 +16,18 @@ urlpatterns = [
     
     # Webhooks
     path("webhooks/ccip", CCIPWebhookView.as_view(), name="ccip-webhook"),
+    path("webhooks/pi", PiNetworkWebhookView.as_view(), name="pi-webhook"),
     
     # Relayer
     path("relayer/status", RelayerStatusView.as_view(), name="relayer-status"),
+    
+    # Health & Testing
+    path("health", HealthCheckView.as_view(), name="health-check"),
+    path("test", TestEndpointsView.as_view(), name="test-endpoints"),
+    
+    # Admin & Monitoring
+    path("admin/stats", AdminStatsView.as_view(), name="admin-stats"),
+    path("admin/intents", AdminIntentsView.as_view(), name="admin-intents"),
     
     # Payouts
     path("payouts/pix", PixPayoutView.as_view(), name="pix-payout"),

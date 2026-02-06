@@ -272,3 +272,109 @@ def update_fx_rates():
     except Exception as e:
         logger.error(f"Error updating FX rates: {e}", exc_info=True)
         return {'status': 'error', 'error': str(e)}
+
+
+@shared_task(bind=True, max_retries=3)
+def process_pi_webhook_event(self, event_data: dict):
+    """
+    Process Pi Network webhook event asynchronously.
+    
+    Args:
+        event_data: Pi Network webhook payload
+        
+    Returns:
+        Processing result
+    """
+    try:
+        event_type = event_data.get('type') or event_data.get('event_type')
+        payment_id = event_data.get('payment_id') or event_data.get('identifier')
+        
+        if not payment_id:
+            logger.error("Pi webhook missing payment_id", extra={'event_data': event_data})
+            return {'status': 'error', 'reason': 'missing_payment_id'}
+        
+        pi_service = get_pi_service()
+        if not pi_service.is_available():
+            logger.warning("Pi Network not available, cannot process webhook")
+            raise self.retry(countdown=60)  # Retry when Pi is available
+        
+        # Verify payment status
+        payment = pi_service.verify_payment(payment_id)
+        
+        if not payment:
+            logger.warning(
+                f"Payment not found or invalid",
+                extra={'payment_id': payment_id, 'event_type': event_type}
+            )
+            return {'status': 'not_found', 'payment_id': payment_id}
+        
+        # Find associated PaymentIntent by payment_id in metadata
+        try:
+            intent = PaymentIntent.objects.filter(
+                metadata__payment_id=payment_id
+            ).first()
+            
+            if not intent:
+                # Try to find by other means
+                logger.warning(
+                    f"PaymentIntent not found for Pi payment",
+                    extra={'payment_id': payment_id}
+                )
+                return {'status': 'intent_not_found', 'payment_id': payment_id}
+            
+            # Update intent based on event type
+            if event_type in ['payment_completed', 'payment_confirmed']:
+                intent.status = 'CONFIRMED'
+                # Update payment info in metadata
+                intent.metadata['pi_payment'] = payment
+                intent.metadata['pi_payment_id'] = payment_id
+                intent.save()
+                
+                logger.info(
+                    f"PaymentIntent confirmed via Pi webhook",
+                    extra={'intent_id': intent.intent_id, 'payment_id': payment_id}
+                )
+                
+            elif event_type == 'payment_cancelled':
+                intent.status = 'CANCELLED'
+                intent.metadata['pi_payment_cancelled'] = True
+                intent.save()
+                
+                logger.info(
+                    f"PaymentIntent cancelled via Pi webhook",
+                    extra={'intent_id': intent.intent_id, 'payment_id': payment_id}
+                )
+            
+            elif event_type == 'payment_failed':
+                intent.metadata['pi_payment_failed'] = True
+                intent.metadata['pi_payment_error'] = event_data.get('error', 'Unknown error')
+                intent.save()
+                
+                logger.warning(
+                    f"Pi payment failed",
+                    extra={'intent_id': intent.intent_id, 'payment_id': payment_id}
+                )
+            
+            return {
+                'status': 'success',
+                'event_type': event_type,
+                'payment_id': payment_id,
+                'intent_id': intent.intent_id,
+                'intent_status': intent.status
+            }
+            
+        except Exception as e:
+            logger.error(
+                f"Error updating PaymentIntent from Pi webhook: {e}",
+                exc_info=True,
+                extra={'payment_id': payment_id, 'event_type': event_type}
+            )
+            raise
+        
+    except Exception as exc:
+        logger.error(
+            f"Error processing Pi webhook event: {exc}",
+            exc_info=True,
+            extra={'event_data': event_data}
+        )
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)

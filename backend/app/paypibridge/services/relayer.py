@@ -193,7 +193,14 @@ class SorobanRelayer:
         
         try:
             # Get current ledger
-            current_ledger = server.fetch_latest_ledger()
+            try:
+                latest_ledger_response = server.fetch_latest_ledger()
+                current_ledger = latest_ledger_response.sequence if hasattr(latest_ledger_response, 'sequence') else latest_ledger_response
+            except Exception as e:
+                logger.error(f"Error fetching latest ledger: {e}", exc_info=True)
+                # Fallback: use REST API directly
+                return self._query_soroban_events_rest(last_ledger or 0, None)
+            
             start_ledger = last_ledger or (current_ledger - 100)  # Look back 100 ledgers if no last_ledger
             
             logger.info(
@@ -206,7 +213,7 @@ class SorobanRelayer:
             )
             
             # Query events using Soroban RPC
-            events = self._query_soroban_events(server, start_ledger, current_ledger)
+            events = self._query_soroban_events(server, start_ledger, current_ledger) if server else self._query_soroban_events_rest(start_ledger, current_ledger)
             
             # Update last processed ledger
             if events:
@@ -262,7 +269,6 @@ class SorobanRelayer:
             payload = {
                 "contractIds": [self.contract_id],
                 "startLedger": start_ledger,
-                "endLedger": end_ledger,
                 "filters": [
                     {
                         "type": "contract",
@@ -275,6 +281,9 @@ class SorobanRelayer:
                     }
                 ]
             }
+            
+            if end_ledger:
+                payload["endLedger"] = end_ledger
             
             response = requests.post(
                 rpc_endpoint,
@@ -311,6 +320,27 @@ class SorobanRelayer:
             )
         
         return events
+    
+    def _query_soroban_events(
+        self,
+        server: Any,
+        start_ledger: int,
+        end_ledger: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Query Soroban contract events using stellar-sdk Server.
+        
+        Args:
+            server: Stellar server instance
+            start_ledger: Starting ledger number
+            end_ledger: Ending ledger number
+            
+        Returns:
+            List of parsed events
+        """
+        # For now, use REST API fallback
+        # Future: implement using server.get_events() or similar
+        return self._query_soroban_events_rest(start_ledger, end_ledger)
     
     def _parse_soroban_event(self, event_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """

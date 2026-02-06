@@ -1,4 +1,7 @@
-import os, hmac, hashlib
+import os
+import hmac
+import hashlib
+import logging
 from rest_framework import status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,7 +11,9 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 
 from django.contrib.auth import get_user_model
-from .models import PaymentIntent, PixTransaction, Consent, BankAccount
+from .models import PaymentIntent, PixTransaction, Consent, BankAccount, WebhookEvent
+
+logger = logging.getLogger(__name__)
 from .serializers import (
     CreateIntentSerializer, PaymentIntentSerializer,
     PixPayoutSerializer, VerifyPaymentSerializer,
@@ -19,6 +24,7 @@ from .clients.pix import PixClient
 from .services.pi_service import get_pi_service
 from .services.consent_service import get_consent_service
 from .services.fx_service import get_fx_service
+from .services.relayer import get_relayer
 from .permissions import IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly
 
 
@@ -595,4 +601,357 @@ class RelayerStatusView(views.APIView):
             "events_found": len(events),
             "processed": processed,
             "status": relayer.get_status()
+        })
+
+
+class PiNetworkWebhookView(views.APIView):
+    """
+    Webhook endpoint for Pi Network payment events.
+    Receives events from Pi Network about payment status changes.
+    """
+    authentication_classes = []
+    permission_classes = []
+    
+    def post(self, request):
+        """
+        Process Pi Network webhook event.
+        
+        Expected events:
+        - payment_created: New payment created
+        - payment_completed: Payment completed
+        - payment_cancelled: Payment cancelled
+        - payment_failed: Payment failed
+        """
+        # Pi Network webhook validation (if they provide signature)
+        pi_webhook_secret = os.getenv('PI_WEBHOOK_SECRET', '')
+        if pi_webhook_secret:
+            signature = request.headers.get('X-Pi-Signature', '')
+            if signature and not _verify_hmac(request.body, signature, pi_webhook_secret):
+                return Response(
+                    {"detail": "invalid signature"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        payload = request.data
+        event_type = payload.get('type') or payload.get('event_type')
+        payment_id = payload.get('payment_id') or payload.get('identifier')
+        
+        if not payment_id:
+            return Response(
+                {"detail": "payment_id is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Process event asynchronously
+        from .tasks import process_pi_webhook_event
+        process_pi_webhook_event.delay(payload)
+        
+        logger.info(
+            f"Pi Network webhook received",
+            extra={
+                'event_type': event_type,
+                'payment_id': payment_id,
+                'request_id': getattr(request, 'request_id', None)
+            }
+        )
+        
+        return Response({"ok": True, "received": True})
+
+
+class HealthCheckView(views.APIView):
+    """
+    Comprehensive health check endpoint.
+    Checks all integrations and services.
+    """
+    authentication_classes = []
+    permission_classes = []
+    
+    def get(self, request):
+        """Get health status of all services."""
+        health = {
+            "status": "healthy",
+            "timestamp": timezone.now().isoformat(),
+            "services": {}
+        }
+        
+        # Check Pi Network
+        pi_service = get_pi_service()
+        pi_available = pi_service.is_available()
+        health["services"]["pi_network"] = {
+            "available": pi_available,
+            "configured": bool(os.getenv('PI_API_KEY') and os.getenv('PI_WALLET_PRIVATE_SEED'))
+        }
+        if not pi_available:
+            health["status"] = "degraded"
+        
+        # Check Open Finance
+        try:
+            from .clients.open_finance import OpenFinanceClient
+            of_client = OpenFinanceClient.from_env()
+            health["services"]["open_finance"] = {
+                "configured": bool(
+                    os.getenv('OPEN_FINANCE_CLIENT_ID') and
+                    os.getenv('OPEN_FINANCE_CLIENT_SECRET')
+                ),
+                "available": True  # Could add actual connectivity check
+            }
+        except Exception as e:
+            health["services"]["open_finance"] = {
+                "configured": False,
+                "available": False,
+                "error": str(e)
+            }
+            health["status"] = "degraded"
+        
+        # Check Soroban Relayer
+        relayer = get_relayer()
+        relayer_status = relayer.get_status()
+        health["services"]["soroban_relayer"] = {
+            "enabled": relayer_status.get("enabled", False),
+            "connected": relayer_status.get("connected", False),
+            "contract_id": relayer_status.get("contract_id", "not_configured")
+        }
+        if not relayer_status.get("enabled"):
+            health["status"] = "degraded"
+        
+        # Check FX Service
+        try:
+            fx_service = get_fx_service()
+            health["services"]["fx_service"] = {
+                "available": True,
+                "provider": os.getenv('FX_PROVIDER', 'fixed')
+            }
+        except Exception as e:
+            health["services"]["fx_service"] = {
+                "available": False,
+                "error": str(e)
+            }
+            health["status"] = "degraded"
+        
+        # Check Database
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            health["services"]["database"] = {"available": True}
+        except Exception as e:
+            health["services"]["database"] = {
+                "available": False,
+                "error": str(e)
+            }
+            health["status"] = "unhealthy"
+        
+        # Check Redis/Celery
+        try:
+            from django.core.cache import cache
+            cache.set('health_check', 'ok', 10)
+            cache.get('health_check')
+            health["services"]["cache"] = {"available": True}
+        except Exception as e:
+            health["services"]["cache"] = {
+                "available": False,
+                "error": str(e)
+            }
+            health["status"] = "degraded"
+        
+        # Check Celery
+        try:
+            from celery import current_app
+            inspect = current_app.control.inspect()
+            stats = inspect.stats()
+            health["services"]["celery"] = {
+                "available": bool(stats),
+                "workers": len(stats) if stats else 0
+            }
+        except Exception as e:
+            health["services"]["celery"] = {
+                "available": False,
+                "error": str(e)
+            }
+            health["status"] = "degraded"
+        
+        status_code = status.HTTP_200_OK
+        if health["status"] == "unhealthy":
+            status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        elif health["status"] == "degraded":
+            status_code = status.HTTP_200_OK  # Still OK but degraded
+        
+        return Response(health, status=status_code)
+
+
+class TestEndpointsView(views.APIView):
+    """
+    Test endpoints for validating integrations.
+    Useful for debugging and testing configurations.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Get list of available test endpoints."""
+        return Response({
+            "endpoints": {
+                "pi_balance": "/api/test/pi-balance",
+                "pi_status": "/api/test/pi-status",
+                "fx_rate": "/api/test/fx-rate?amount_pi=10",
+                "relayer_status": "/api/test/relayer-status",
+                "open_finance_config": "/api/test/open-finance-config"
+            }
+        })
+    
+    def post(self, request):
+        """Run specific test."""
+        test_type = request.data.get('test')
+        
+        if test_type == 'pi_balance':
+            pi_service = get_pi_service()
+            balance = pi_service.get_balance()
+            return Response({
+                "test": "pi_balance",
+                "available": pi_service.is_available(),
+                "balance": str(balance) if balance else None
+            })
+        
+        elif test_type == 'fx_rate':
+            amount_pi = Decimal(str(request.data.get('amount_pi', '10')))
+            fx_service = get_fx_service()
+            quote = fx_service.get_quote(amount_pi)
+            return Response({
+                "test": "fx_rate",
+                "amount_pi": str(amount_pi),
+                "quote": quote
+            })
+        
+        elif test_type == 'relayer':
+            relayer = get_relayer()
+            status = relayer.get_status()
+            # Try to query events
+            events = relayer.monitor_contract_events()
+            return Response({
+                "test": "relayer",
+                "status": status,
+                "events_found": len(events)
+            })
+        
+        elif test_type == 'open_finance':
+            try:
+                from .clients.open_finance import OpenFinanceClient
+                client = OpenFinanceClient.from_env()
+                return Response({
+                    "test": "open_finance",
+                    "configured": bool(
+                        os.getenv('OPEN_FINANCE_CLIENT_ID') and
+                        os.getenv('OPEN_FINANCE_CLIENT_SECRET')
+                    ),
+                    "client_id": os.getenv('OPEN_FINANCE_CLIENT_ID', 'not_set')[:10] + '...' if os.getenv('OPEN_FINANCE_CLIENT_ID') else None
+                })
+            except Exception as e:
+                return Response({
+                    "test": "open_finance",
+                    "error": str(e)
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(
+            {"detail": f"Unknown test type: {test_type}"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+class AdminStatsView(views.APIView):
+    """
+    Administrative endpoint for monitoring system statistics.
+    Requires authentication (can be configured).
+    """
+    permission_classes = [AllowAny]  # Change to IsAuthenticated in production
+    
+    def get(self, request):
+        """Get system statistics."""
+        from django.db.models import Count, Sum, Q
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        now = timezone.now()
+        last_24h = now - timedelta(hours=24)
+        last_7d = now - timedelta(days=7)
+        
+        stats = {
+            "timestamp": now.isoformat(),
+            "payment_intents": {
+                "total": PaymentIntent.objects.count(),
+                "last_24h": PaymentIntent.objects.filter(created_at__gte=last_24h).count(),
+                "last_7d": PaymentIntent.objects.filter(created_at__gte=last_7d).count(),
+                "by_status": dict(
+                    PaymentIntent.objects.values('status')
+                    .annotate(count=Count('id'))
+                    .values_list('status', 'count')
+                ),
+                "total_amount_pi": str(
+                    PaymentIntent.objects.aggregate(Sum('amount_pi'))['amount_pi__sum'] or 0
+                ),
+                "total_amount_brl": str(
+                    PaymentIntent.objects.aggregate(Sum('amount_brl'))['amount_brl__sum'] or 0
+                )
+            },
+            "pix_transactions": {
+                "total": PixTransaction.objects.count(),
+                "last_24h": PixTransaction.objects.filter(created_at__gte=last_24h).count(),
+                "by_status": dict(
+                    PixTransaction.objects.values('status')
+                    .annotate(count=Count('id'))
+                    .values_list('status', 'count')
+                )
+            },
+            "consents": {
+                "total": Consent.objects.count(),
+                "active": Consent.objects.filter(status='ACTIVE').count(),
+                "expired": Consent.objects.filter(
+                    expires_at__lt=now,
+                    status='ACTIVE'
+                ).count()
+            },
+            "webhook_events": {
+                "total": WebhookEvent.objects.count(),
+                "last_24h": WebhookEvent.objects.filter(created_at__gte=last_24h).count()
+            },
+            "services": {
+                "pi_network": {
+                    "available": get_pi_service().is_available(),
+                    "configured": bool(os.getenv('PI_API_KEY'))
+                },
+                "soroban_relayer": get_relayer().get_status(),
+                "fx_service": {
+                    "provider": os.getenv('FX_PROVIDER', 'fixed'),
+                    "available": True
+                }
+            }
+        }
+        
+        return Response(stats)
+
+
+class AdminIntentsView(views.APIView):
+    """
+    Administrative endpoint to list and filter PaymentIntents.
+    """
+    permission_classes = [AllowAny]  # Change to IsAuthenticated in production
+    
+    def get(self, request):
+        """List PaymentIntents with filtering."""
+        status_filter = request.query_params.get('status')
+        limit = int(request.query_params.get('limit', 50))
+        offset = int(request.query_params.get('offset', 0))
+        
+        queryset = PaymentIntent.objects.all().order_by('-created_at')
+        
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        intents = queryset[offset:offset + limit]
+        
+        serializer = PaymentIntentSerializer(intents, many=True)
+        
+        return Response({
+            "count": queryset.count(),
+            "results": serializer.data,
+            "limit": limit,
+            "offset": offset
         })

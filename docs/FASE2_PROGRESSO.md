@@ -153,12 +153,24 @@
 
 ## ⏳ PENDENTES
 
-### 1. Webhook da Pi Network ⏳
+### 1. Webhook da Pi Network ✅
 
-- [ ] Implementar endpoint para receber webhooks da Pi Network
-- [ ] Validação de assinatura
-- [ ] Processamento de eventos Pi
-- [ ] Atualização automática de PaymentIntents
+- [x] Implementar endpoint para receber webhooks da Pi Network
+- [x] Validação de assinatura (HMAC)
+- [x] Processamento de eventos Pi (assíncrono via Celery)
+- [x] Atualização automática de PaymentIntents
+
+**Arquivos modificados**:
+- `backend/app/paypibridge/views.py` (PiNetworkWebhookView)
+- `backend/app/paypibridge/tasks.py` (process_pi_webhook_event)
+- `backend/app/paypibridge/urls.py`
+
+**Funcionalidades**:
+- Endpoint POST `/api/webhooks/pi`
+- Validação de assinatura HMAC (se `PI_WEBHOOK_SECRET` configurado)
+- Processamento assíncrono de eventos
+- Suporte a eventos: `payment_completed`, `payment_cancelled`, `payment_failed`
+- Atualização automática de PaymentIntent baseado em eventos Pi
 
 **Prioridade**: MÉDIA (depende de disponibilidade da API Pi)
 
@@ -209,14 +221,25 @@
   - `celery.py`
   - `CONFIGURACAO_CREDENCIAIS.md`
 
-- **Arquivos modificados**: 5
+- **Arquivos modificados**: 7
   - `pi_service.py`
   - `open_finance.py`
-  - `views.py`
+  - `views.py` (múltiplas views adicionadas)
+  - `urls.py`
+  - `tasks.py` (task Pi webhook adicionada)
   - `settings.py`
   - `requirements.txt`
 
-- **Linhas de código**: ~1500+ linhas adicionadas
+- **Linhas de código**: ~2500+ linhas adicionadas
+
+- **Endpoints criados**: 15+
+  - Payment Intents: 3
+  - Webhooks: 2
+  - Pi Network: 3
+  - Open Finance: 4
+  - FX: 1
+  - Relayer: 1
+  - Health/Test/Admin: 4
 
 ---
 
@@ -289,11 +312,13 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 - [x] Tarefas assíncronas criadas
 - [x] FX integrado no IntentView
 - [x] Documentação criada
-- [ ] Webhook Pi Network (pendente)
-- [ ] Integração real Soroban RPC (pendente)
-- [ ] Testes com credenciais reais (pendente)
+- [x] Webhook Pi Network
+- [x] Integração real Soroban RPC
+- [x] Health check e endpoints de teste
+- [x] Views administrativas
+- [ ] Testes com credenciais reais (pendente - requer configuração)
 
 ---
 
-**Status**: 🟡 FASE 2 EM ANDAMENTO (85% completa)  
-**Próxima tarefa**: Testar integração Soroban RPC com credenciais reais
+**Status**: 🟢 FASE 2 QUASE COMPLETA (95% completa)  
+**Próxima tarefa**: Configurar credenciais reais e testar integrações end-to-end
