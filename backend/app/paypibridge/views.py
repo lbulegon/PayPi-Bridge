@@ -567,3 +567,32 @@ class ReconcilePaymentView(views.APIView):
             )
         
         return Response(result)
+
+
+class RelayerStatusView(views.APIView):
+    """
+    Get status of Soroban Relayer service.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Get relayer status and configuration."""
+        relayer = get_relayer()
+        status = relayer.get_status()
+        return Response(status)
+    
+    def post(self, request):
+        """Manually trigger event monitoring (for testing)."""
+        relayer = get_relayer()
+        events = relayer.monitor_contract_events(relayer._last_ledger)
+        
+        processed = 0
+        for event in events:
+            if relayer.process_event(event):
+                processed += 1
+        
+        return Response({
+            "events_found": len(events),
+            "processed": processed,
+            "status": relayer.get_status()
+        })

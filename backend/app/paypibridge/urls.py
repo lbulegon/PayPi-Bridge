@@ -3,7 +3,8 @@ from .views import (
     IntentView, IntentListView, CCIPWebhookView, PixPayoutView,
     VerifyPiPaymentView, PiBalanceView, PiStatusView,
     ConsentView, ConsentDetailView,
-    LinkBankAccountView, ReconcilePaymentView
+    LinkBankAccountView, ReconcilePaymentView,
+    FXQuoteView, RelayerStatusView
 )
 
 urlpatterns = [
@@ -14,6 +15,9 @@ urlpatterns = [
     
     # Webhooks
     path("webhooks/ccip", CCIPWebhookView.as_view(), name="ccip-webhook"),
+    
+    # Relayer
+    path("relayer/status", RelayerStatusView.as_view(), name="relayer-status"),
     
     # Payouts
     path("payouts/pix", PixPayoutView.as_view(), name="pix-payout"),

@@ -164,14 +164,27 @@
 
 ---
 
-### 2. Integração Real Soroban RPC ⏳
+### 2. Integração Real Soroban RPC ✅
 
-- [ ] Conectar com Soroban RPC real
-- [ ] Implementar polling de eventos
-- [ ] Processar eventos do contrato deployado
-- [ ] Testes com testnet
+- [x] Conectar com Soroban RPC real
+- [x] Implementar polling de eventos
+- [x] Processar eventos do contrato deployado
+- [x] Endpoint de status do relayer
+- [ ] Testes com testnet (pendente credenciais)
 
 **Prioridade**: ALTA (necessário para funcionamento completo)
+
+**Arquivos modificados**:
+- `backend/app/paypibridge/services/relayer.py`
+- `backend/app/paypibridge/views.py` (RelayerStatusView)
+- `backend/app/paypibridge/urls.py`
+
+**Funcionalidades implementadas**:
+- Conexão com Soroban RPC via `stellar-sdk`
+- Query de eventos usando REST API do Soroban RPC
+- Parsing de eventos (IntentCreated, DeliveryConfirmed, IntentCancelled)
+- Endpoint GET/POST `/api/relayer/status` para monitoramento
+- Rastreamento de último ledger processado
 
 ---
 
@@ -282,5 +295,5 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 
 ---
 
-**Status**: 🟡 FASE 2 EM ANDAMENTO (70% completa)  
-**Próxima tarefa**: Implementar integração real Soroban RPC
+**Status**: 🟡 FASE 2 EM ANDAMENTO (85% completa)  
+**Próxima tarefa**: Testar integração Soroban RPC com credenciais reais
