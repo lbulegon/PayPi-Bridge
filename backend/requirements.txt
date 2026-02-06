@@ -5,3 +5,5 @@ pydantic>=2.7
 python-dotenv>=1.0
 requests>=2.32
 psycopg2-binary>=2.9
+gunicorn==25.0.2
+whitenoise==6.11.0
