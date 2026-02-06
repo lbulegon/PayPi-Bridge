@@ -325,6 +325,74 @@ class PiBalanceView(views.APIView):
         balance = pi_service.get_balance()
         if balance is None:
             return Response(
+                {"detail": "Could not retrieve balance"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        return Response({
+            "balance": str(balance),
+            "network": pi_service.network
+        })
+
+
+class FXQuoteView(views.APIView):
+    """
+    Get FX quote for Pi → BRL conversion.
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        """Get current FX rate."""
+        fx_service = get_fx_service()
+        rate = fx_service.get_rate()
+        
+        if rate is None:
+            return Response(
+                {"detail": "FX rate unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        return Response({
+            "from_currency": "PI",
+            "to_currency": "BRL",
+            "rate": str(rate),
+            "provider": fx_service.provider,
+            "cache_ttl": fx_service.cache_timeout
+        })
+    
+    def post(self, request):
+        """Get FX quote for specific amount."""
+        amount_pi_str = request.data.get('amount_pi')
+        if not amount_pi_str:
+            return Response(
+                {"detail": "amount_pi is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            amount_pi = Decimal(str(amount_pi_str))
+        except (ValueError, TypeError):
+            return Response(
+                {"detail": "Invalid amount_pi format"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        fx_service = get_fx_service()
+        quote = fx_service.get_quote(amount_pi)
+        
+        return Response(quote)
+
+    def get(self, request):
+        pi_service = get_pi_service()
+        if not pi_service.is_available():
+            return Response(
+                {"detail": "Pi Network integration not available"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+        balance = pi_service.get_balance()
+        if balance is None:
+            return Response(
                 {"detail": "Unable to retrieve balance"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )

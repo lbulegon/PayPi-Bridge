@@ -22,6 +22,9 @@ urlpatterns = [
     path("pi/status", PiStatusView.as_view(), name="pi-status"),
     path("pi/balance", PiBalanceView.as_view(), name="pi-balance"),
     
+    # FX / Taxa de Câmbio
+    path("fx/quote", FXQuoteView.as_view(), name="fx-quote"),
+    
     # Open Finance - Consent Management
     path("consents", ConsentView.as_view(), name="consents-list"),
     path("consents/<int:consent_id>", ConsentDetailView.as_view(), name="consent-detail"),
