@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 class PayPiBridgeConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "paypibridge"
+    name = "app.paypibridge"

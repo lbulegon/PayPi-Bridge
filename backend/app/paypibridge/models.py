@@ -35,6 +35,9 @@ class PaymentIntent(models.Model):
     metadata = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now)
 
+    def __str__(self):
+        return self.intent_id
+
 class Escrow(models.Model):
     intent = models.OneToOneField(PaymentIntent, on_delete=models.CASCADE, related_name="escrow")
     release_condition = models.CharField(max_length=64, default="DELIVERY_CONFIRMED")
@@ -46,3 +49,15 @@ class PixTransaction(models.Model):
     status = models.CharField(max_length=32)
     payload = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now)
+
+
+class WebhookEvent(models.Model):
+    """Eventos de webhook CCIP já processados (idempotência)."""
+    intent_id = models.CharField(max_length=120, db_index=True)
+    event_id = models.CharField(max_length=120)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["intent_id", "event_id"], name="paypibridge_webhook_intent_event_unique"),
+        ]
