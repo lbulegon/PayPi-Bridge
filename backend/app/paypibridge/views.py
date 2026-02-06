@@ -18,6 +18,7 @@ from .serializers import (
 from .clients.pix import PixClient
 from .services.pi_service import get_pi_service
 from .services.consent_service import get_consent_service
+from .services.fx_service import get_fx_service
 from .permissions import IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly
 
 
@@ -51,12 +52,19 @@ class IntentView(views.APIView):
         s.is_valid(raise_exception=True)
         data = s.validated_data
         
+        # Get FX quote for amount
+        fx_service = get_fx_service()
+        fx_quote = fx_service.get_quote(data["amount_pi"])
+        amount_brl = fx_service.convert(data["amount_pi"]) if fx_quote.get('rate') else None
+        
         # Create PaymentIntent
         intent = PaymentIntent.objects.create(
             intent_id=f"pi_{int(timezone.now().timestamp() * 1000)}",
             payer_address="onchain_tbd",  # Will be updated when Pi payment is received
             payee_user_id=data["payee_user_id"],
             amount_pi=data["amount_pi"],
+            amount_brl=amount_brl,
+            fx_quote=fx_quote,
             metadata=data.get("metadata", {}),
         )
         

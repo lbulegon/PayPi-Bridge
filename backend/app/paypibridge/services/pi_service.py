@@ -7,8 +7,11 @@ Handles authentication, payment validation, and transaction tracking.
 
 import os
 import sys
+import logging
 from typing import Optional, Dict, Any
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 # SDK Pi Network: PayPi-Bridge/backend/pi_sdk/ (único uso)
 _backend_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -72,9 +75,18 @@ class PiService:
             
         try:
             balance = client.get_balance()
-            return Decimal(str(balance)) if balance is not None else None
+            result = Decimal(str(balance)) if balance is not None else None
+            logger.info(
+                f"Pi balance retrieved",
+                extra={'balance': str(result) if result else None, 'network': self.network}
+            )
+            return result
         except Exception as e:
-            print(f"Error getting Pi balance: {e}")
+            logger.error(
+                f"Error getting Pi balance: {e}",
+                exc_info=True,
+                extra={'network': self.network}
+            )
             return None
     
     def verify_payment(self, payment_id: str) -> Optional[Dict[str, Any]]:
@@ -94,10 +106,22 @@ class PiService:
         try:
             payment = client.get_payment(payment_id)
             if payment and 'error' not in payment:
+                logger.info(
+                    f"Payment verified successfully",
+                    extra={'payment_id': payment_id, 'status': payment.get('status', {})}
+                )
                 return payment
+            logger.warning(
+                f"Payment verification failed or payment not found",
+                extra={'payment_id': payment_id, 'error': payment.get('error') if payment else 'not_found'}
+            )
             return None
         except Exception as e:
-            print(f"Error verifying payment {payment_id}: {e}")
+            logger.error(
+                f"Error verifying payment {payment_id}: {e}",
+                exc_info=True,
+                extra={'payment_id': payment_id}
+            )
             return None
     
     def create_app_to_user_payment(

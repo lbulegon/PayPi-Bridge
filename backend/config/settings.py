@@ -131,6 +131,31 @@ DATABASES = {
     }
 }
 
+# ========== CELERY CONFIGURATION ==========
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+CELERY_BEAT_SCHEDULE = {
+    "monitor-soroban-events": {
+        "task": "app.paypibridge.tasks.monitor_soroban_events",
+        "schedule": 30.0,  # Every 30 seconds
+    },
+    "process-incomplete-payments": {
+        "task": "app.paypibridge.tasks.process_incomplete_payments",
+        "schedule": 300.0,  # Every 5 minutes
+    },
+    "update-fx-rates": {
+        "task": "app.paypibridge.tasks.update_fx_rates",
+        "schedule": 300.0,  # Every 5 minutes
+    },
+}
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},

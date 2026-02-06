@@ -13,12 +13,17 @@ import os
 import uuid
 import requests
 import json
+import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import ssl
 import certifi
+
+from ..services.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+
+logger = logging.getLogger(__name__)
 
 
 def _of_use_mock() -> bool:
@@ -63,17 +68,25 @@ class OpenFinanceClient:
 
         # Configurar sessão HTTP com mTLS (só quando não for mock)
         self._session = self._create_session()
+        
+        # Circuit breaker para resiliência
+        self._circuit_breaker = CircuitBreaker(
+            failure_threshold=5,
+            recovery_timeout=60,
+            expected_exception=(requests.RequestException, CircuitBreakerOpenError)
+        )
     
     def _create_session(self) -> requests.Session:
         """Cria sessão HTTP com mTLS configurado."""
         session = requests.Session()
         
-        # Configurar retry strategy
+        # Configurar retry strategy com backoff exponencial
         retry_strategy = Retry(
             total=3,
-            backoff_factor=1,
+            backoff_factor=2,  # Exponential backoff: 1s, 2s, 4s
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST", "PUT", "DELETE"]
+            allowed_methods=["GET", "POST", "PUT", "DELETE"],
+            raise_on_status=False  # Don't raise on retry-able status codes
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("https://", adapter)
@@ -315,17 +328,30 @@ class OpenFinanceClient:
         }
         
         try:
-            response = self._session.post(
-                payment_url,
-                json=payload,
-                headers=self._get_headers(consent_id)
-            )
-            response.raise_for_status()
+            # Use circuit breaker for resilience
+            def _make_request():
+                response = self._session.post(
+                    payment_url,
+                    json=payload,
+                    headers=self._get_headers(consent_id)
+                )
+                response.raise_for_status()
+                return response
             
+            response = self._circuit_breaker.call(_make_request)
             result = response.json()
             
             # Extrair informações relevantes
             payment_data = result.get("data", {}).get("payment", {})
+            
+            logger.info(
+                f"Pix payment created successfully",
+                extra={
+                    'payment_id': payment_data.get("paymentId"),
+                    'amount': amount_brl,
+                    'consent_id': consent_id
+                }
+            )
             
             return {
                 "txid": payment_data.get("paymentId", end_to_end_id),
@@ -343,15 +369,42 @@ class OpenFinanceClient:
             except:
                 error_detail = str(e)
             
-            print(f"Error creating Pix payment: {error_detail}")
+            logger.error(
+                f"Error creating Pix payment: {error_detail}",
+                exc_info=True,
+                extra={'consent_id': consent_id, 'amount': amount_brl}
+            )
+            raise
+        except CircuitBreakerOpenError as e:
+            logger.error(
+                f"Circuit breaker open, Pix payment blocked: {e}",
+                extra={'consent_id': consent_id}
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                f"Unexpected error creating Pix payment: {e}",
+                exc_info=True,
+                extra={'consent_id': consent_id, 'amount': amount_brl}
+            )
             return {
                 "txid": end_to_end_id,
                 "status": "ERROR",
                 "error": error_detail,
                 "amount": amount_brl
             }
+        except CircuitBreakerOpenError as e:
+            logger.error(
+                f"Circuit breaker open, Pix payment blocked: {e}",
+                extra={'consent_id': consent_id}
+            )
+            raise
         except Exception as e:
-            print(f"Unexpected error creating Pix payment: {e}")
+            logger.error(
+                f"Unexpected error creating Pix payment: {e}",
+                exc_info=True,
+                extra={'consent_id': consent_id, 'amount': amount_brl}
+            )
             return {
                 "txid": end_to_end_id,
                 "status": "ERROR",
