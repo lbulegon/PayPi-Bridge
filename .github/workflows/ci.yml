@@ -102,6 +102,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 black isort
     
+    - name: Check requirements synchronization
+      run: |
+        python scripts/sync_requirements.py --check || (echo "❌ requirements.txt da raiz está desatualizado! Execute: python scripts/sync_requirements.py" && exit 1)
+    
     - name: Run flake8
       run: |
         cd backend

@@ -33,21 +33,38 @@ PayPi-Bridge/
 │   │       └── services/      # Serviços de negócio
 │   │           └── pi_service.py  # Integração Pi Network
 │   ├── tests/                 # Testes
-│   ├── requirements.txt       # Dependências Python
+│   ├── requirements.txt       # Dependências Python (backend)
 │   └── Dockerfile            # Container Docker
 ├── contracts/                 # Contratos Soroban
 │   └── soroban/
 │       └── paypi_bridge.rs   # Contrato principal
 ├── docs/                      # Documentação
 │   ├── architecture.mmd      # Diagrama de arquitetura
-│   └── sequence.mmd          # Diagrama de sequência
+│   ├── sequence.mmd          # Diagrama de sequência
+│   └── REQUIREMENTS_SYNC.md  # Guia de sincronização de requirements
+├── scripts/                   # Scripts utilitários
+│   └── sync_requirements.py  # Sincroniza requirements.txt
 ├── sql/                       # Scripts SQL
 │   └── schema.sql            # DDL inicial
 ├── openapi/                   # Especificação OpenAPI
 │   └── openapi.yaml
 ├── postman/                   # Coleção Postman
+├── requirements.txt          # Dependências Python (raiz - usado pelo Railway)
 ├── docker-compose.yml        # Orquestração Docker
 └── .env.example              # Variáveis de ambiente (template)
+```
+
+### ⚠️ Importante: Sincronização de Requirements
+
+O Railway usa o `requirements.txt` da **raiz do projeto**, não o `backend/requirements.txt`.
+
+**Sempre que adicionar uma dependência em `backend/requirements.txt`, execute:**
+
+```bash
+python scripts/sync_requirements.py
+```
+
+Isso garante que ambas as dependências estejam sincronizadas. Veja [docs/REQUIREMENTS_SYNC.md](docs/REQUIREMENTS_SYNC.md) para mais detalhes.
 
 ```
 

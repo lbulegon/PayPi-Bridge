@@ -1,0 +1,30 @@
+name: Sync Requirements
+
+on:
+  pull_request:
+    paths:
+      - 'backend/requirements.txt'
+      - 'requirements.txt'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Sync requirements
+        run: |
+          python scripts/sync_requirements.py --check
+      
+      - name: Fail if requirements are out of sync
+        if: failure()
+        run: |
+          echo "❌ requirements.txt da raiz está desatualizado!"
+          echo "Execute: python scripts/sync_requirements.py"
+          exit 1
