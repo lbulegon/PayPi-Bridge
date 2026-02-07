@@ -137,15 +137,6 @@ def home_view(request):
             cursor: pointer;
         }
         .btn-logout:hover { background: #dc2626; }
-        .auth-prompt {
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        .auth-prompt.hidden { display: none; }
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
