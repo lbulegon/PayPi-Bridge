@@ -1351,7 +1351,7 @@ LOGIN_HTML = """
                     localStorage.setItem('refresh_token', data.tokens.refresh);
                     
                     // Redirecionar para dashboard
-                    window.location.href = '/';
+                    window.location.href = '/dashboard/';
                 } else {
                     // Mostrar erro
                     errorDiv.textContent = data.message || data.detail || 'Erro ao fazer login';
@@ -1620,7 +1620,7 @@ REGISTER_HTML = """
                     localStorage.setItem('refresh_token', data.tokens.refresh);
                     
                     // Redirecionar para dashboard
-                    window.location.href = '/';
+                    window.location.href = '/dashboard/';
                 } else {
                     // Mostrar erro
                     var errorMsg = data.message || data.detail || 'Erro ao criar conta';
