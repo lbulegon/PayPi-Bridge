@@ -77,8 +77,30 @@ def home_view(request):
             margin-left: 0.5rem;
         }
         .footer { margin-top: 2rem; color: #64748b; font-size: 0.85rem; }
-        .logo-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .logo-header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            gap: 1rem; 
+            margin-bottom: 1.5rem; 
+            flex-wrap: wrap; 
+        }
         .logo-header img { height: 48px; width: auto; display: block; }
+        .welcome-message {
+            flex: 1;
+            text-align: right;
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-left: auto;
+        }
+        @media (max-width: 768px) {
+            .welcome-message {
+                text-align: left;
+                width: 100%;
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
+        }
         .user-header {
             background: rgba(30, 41, 59, 0.8);
             border: 1px solid rgba(71, 85, 105, 0.5);
