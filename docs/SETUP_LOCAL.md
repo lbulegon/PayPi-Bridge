@@ -6,12 +6,24 @@
 
 ## 🚀 Configuração Inicial
 
-### 1. Instalar Dependências
+### 1. Criar e Ativar Ambiente Virtual (Recomendado)
+
+```bash
+cd backend
+python3 -m venv venv
+
+# Ativar o ambiente virtual
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate     # Windows
+```
+
+### 2. Instalar Dependências
 
 ```bash
 cd backend
 pip install -r requirements.txt
-# ou
+# ou se não estiver usando venv:
 pip3 install -r requirements.txt
 ```
 
