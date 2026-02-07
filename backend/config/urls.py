@@ -84,15 +84,22 @@ def home_view(request):
             gap: 1rem; 
             margin-bottom: 1.5rem; 
             flex-wrap: wrap; 
+            min-height: 48px;
         }
-        .logo-header img { height: 48px; width: auto; display: block; }
+        .logo-header img { 
+            height: 48px; 
+            width: auto; 
+            display: block;
+            align-self: flex-end;
+        }
         .welcome-message {
             flex: 1;
             text-align: right;
             color: #94a3b8;
             font-size: 0.95rem;
             margin-left: auto;
-            padding-bottom: 0.25rem;
+            align-self: flex-end;
+            padding-bottom: 0;
         }
         @media (max-width: 768px) {
             .welcome-message {
