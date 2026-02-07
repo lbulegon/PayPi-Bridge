@@ -125,16 +125,60 @@ TEMPLATES = [
 ]
 
 # ========== DATABASE ==========
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "paypibridge"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
+# Suporte a DATABASE_URL (Railway, Heroku, etc.) ou variáveis individuais
+DATABASE_URL = os.getenv("DATABASE_URL", "")
+
+if DATABASE_URL:
+    # Parse DATABASE_URL (formato: postgresql://user:password@host:port/dbname)
+    import re
+    from urllib.parse import urlparse
+    
+    # Converter postgresql:// para postgres:// se necessário (compatibilidade)
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://", 1)
+    
+    try:
+        parsed = urlparse(DATABASE_URL)
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": parsed.path[1:] if parsed.path.startswith("/") else parsed.path,  # Remove leading /
+                "USER": parsed.username,
+                "PASSWORD": parsed.password,
+                "HOST": parsed.hostname,
+                "PORT": parsed.port or "5432",
+                "OPTIONS": {
+                    "sslmode": "require",  # Railway geralmente requer SSL
+                },
+            }
+        }
+    except Exception as e:
+        # Fallback para configuração padrão se parsing falhar
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Erro ao parsear DATABASE_URL: {e}. Usando configuração padrão.")
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql",
+                "NAME": os.getenv("DB_NAME", "paypibridge"),
+                "USER": os.getenv("DB_USER", "postgres"),
+                "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+                "HOST": os.getenv("DB_HOST", "localhost"),
+                "PORT": os.getenv("DB_PORT", "5432"),
+            }
+        }
+else:
+    # Configuração usando variáveis individuais
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "paypibridge"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
     }
-}
 
 # ========== INTERNATIONALIZATION ==========
 LANGUAGE_CODE = "pt-br"
