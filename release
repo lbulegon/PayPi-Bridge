@@ -2,5 +2,12 @@
 # Railway release script
 # Executa collectstatic antes de iniciar o servidor
 
+set -e  # Exit on error
+
 cd backend
-python manage.py collectstatic --noinput
+
+echo "Collecting static files..."
+python manage.py collectstatic --noinput --clear
+
+echo "Static files collected successfully!"
+ls -la staticfiles/ 2>/dev/null || echo "Warning: staticfiles directory not created"

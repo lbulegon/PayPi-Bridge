@@ -183,7 +183,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ========== STATIC / MEDIA (final) ==========
 # WhiteNoise storage
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Em desenvolvimento, usar storage simples para facilitar debug
+if DEBUG:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+else:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# WhiteNoise configuração adicional
+WHITENOISE_USE_FINDERS = True  # Permite servir arquivos de STATICFILES_DIRS em desenvolvimento
+WHITENOISE_AUTOREFRESH = DEBUG  # Recarrega automaticamente em desenvolvimento
 
 # ========== LOGIN REDIRECTS ==========
 LOGIN_URL = "/admin/login/"
