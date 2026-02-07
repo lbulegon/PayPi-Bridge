@@ -79,7 +79,7 @@ def home_view(request):
         .footer { margin-top: 2rem; color: #64748b; font-size: 0.85rem; }
         .logo-header { 
             display: flex; 
-            align-items: center; 
+            align-items: flex-end; 
             justify-content: space-between;
             gap: 1rem; 
             margin-bottom: 1.5rem; 
@@ -92,6 +92,7 @@ def home_view(request):
             color: #94a3b8;
             font-size: 0.95rem;
             margin-left: auto;
+            padding-bottom: 0.25rem;
         }
         @media (max-width: 768px) {
             .welcome-message {
