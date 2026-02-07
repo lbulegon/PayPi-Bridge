@@ -267,6 +267,19 @@ Este projeto está em desenvolvimento ativo. Consulte os arquivos de licença pa
 - [Open Banking Brasil](https://www.bcb.gov.br/estabilidadefinanceira/openbanking)
 - [Soroban Documentation](https://soroban.stellar.org/docs)
 
+## 🆕 PPBridge Service
+
+O projeto agora inclui o **PPBridge Service**, um engine completo de bridge entre criptomoedas e moedas fiduciárias:
+
+- **State Machine**: Fluxo com estados validados (INITIATED → VALIDATED → BRIDGING → COMPLETED)
+- **Adapters Desacoplados**: Interface clara para crypto e finance adapters
+- **Idempotência**: Suporte completo via `Idempotency-Key` header
+- **Webhooks Assinados**: HMAC SHA-256 com retry automático
+- **Auditoria Completa**: Todos os eventos registrados
+- **API REST**: Endpoints em `/api/v1/bridge/`
+
+Veja [backend/app/bridge/README.md](backend/app/bridge/README.md) para documentação completa.
+
 ---
 
-**Última atualização**: 2025-01-30
+**Última atualização**: 2026-02-07
