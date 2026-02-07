@@ -130,33 +130,43 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 if DATABASE_URL:
     # Parse DATABASE_URL (formato: postgresql://user:password@host:port/dbname)
-    import re
-    from urllib.parse import urlparse
-    
-    # Converter postgresql:// para postgres:// se necessário (compatibilidade)
-    if DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgres://", 1)
+    from urllib.parse import urlparse, unquote
     
     try:
-        parsed = urlparse(DATABASE_URL)
+        # Converter postgresql:// para postgres:// para urlparse (compatibilidade)
+        db_url = DATABASE_URL
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgres://", 1)
+        
+        parsed = urlparse(db_url)
+        
+        # Extrair nome do banco (remove leading /)
+        db_name = parsed.path[1:] if parsed.path.startswith("/") else parsed.path
+        
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
-                "NAME": parsed.path[1:] if parsed.path.startswith("/") else parsed.path,  # Remove leading /
-                "USER": parsed.username,
-                "PASSWORD": parsed.password,
+                "NAME": db_name,
+                "USER": parsed.username or "postgres",
+                "PASSWORD": unquote(parsed.password) if parsed.password else "",
                 "HOST": parsed.hostname,
-                "PORT": parsed.port or "5432",
+                "PORT": str(parsed.port) if parsed.port else "5432",
                 "OPTIONS": {
-                    "sslmode": "require",  # Railway geralmente requer SSL
+                    "sslmode": "require",  # Railway requer SSL
                 },
+                "CONN_MAX_AGE": 600,  # Pool de conexões (10 minutos)
             }
         }
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Database configurado via DATABASE_URL: {parsed.hostname}:{parsed.port}/{db_name}")
+        
     except Exception as e:
         # Fallback para configuração padrão se parsing falhar
         import logging
         logger = logging.getLogger(__name__)
-        logger.warning(f"Erro ao parsear DATABASE_URL: {e}. Usando configuração padrão.")
+        logger.error(f"Erro ao parsear DATABASE_URL: {e}. Usando configuração padrão.", exc_info=True)
         DATABASES = {
             "default": {
                 "ENGINE": "django.db.backends.postgresql",
