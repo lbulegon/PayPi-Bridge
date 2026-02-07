@@ -197,8 +197,8 @@ def home_view(request):
         <header class="logo-header">
             <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="logo">
             <div class="welcome-message" id="welcome-message">
-                👋 Bem-vindo! <a href="/forms/#auth-login">Faça login</a> ou 
-                <a href="/forms/#auth-register">crie uma conta</a> para acessar seu dashboard.
+                👋 Bem-vindo! <a href="/login/">Faça login</a> ou 
+                <a href="/register/">crie uma conta</a> para acessar seu dashboard.
             </div>
         </header>
 
@@ -233,8 +233,8 @@ def home_view(request):
         <div class="card" style="border-left: 3px solid #22c55e;">
             <h2 style="color: #22c55e;">🔐 Autenticação</h2>
             <div class="links">
-                <a href="/forms/#auth-login">Login</a>
-                <a href="/forms/#auth-register">Registro</a>
+                <a href="/login/">Login</a>
+                <a href="/register/">Registro</a>
                 <a href="/api/auth/me" id="link-profile" style="display:none;">Meu Perfil</a>
                 <a href="/api/auth/check">Verificar Auth</a>
             </div>
@@ -1074,11 +1074,517 @@ def dashboard_view(request):
     return HttpResponse(DASHBOARD_HTML)
 
 
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PayPi-Bridge</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 2rem;
+        }
+        .login-card {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .logo-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-header img {
+            height: 64px;
+            width: auto;
+            margin-bottom: 1rem;
+        }
+        .logo-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(90deg, #38bdf8, #a78bfa, #FF9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            color: #e2e8f0;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+        .btn-login {
+            width: 100%;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 0.875rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+        }
+        .btn-login:hover {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
+        .register-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        .register-link a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        .back-link {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .back-link:hover {
+            color: #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-link">← Voltar</a>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="logo-header">
+                <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge">
+                <h1>Login</h1>
+            </div>
+            
+            <div class="error-message" id="error-message"></div>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Username ou Email</label>
+                    <input type="text" id="username" name="username" placeholder="usuario123 ou usuario@example.com" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" placeholder="Sua senha" required>
+                </div>
+                
+                <button type="submit" class="btn-login" id="btn-login">
+                    Entrar
+                </button>
+            </form>
+            
+            <div class="register-link">
+                Não tem uma conta? <a href="/register/">Crie uma agora</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('login-form').onsubmit = function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('btn-login');
+            var errorDiv = document.getElementById('error-message');
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            
+            // Esconder erro anterior
+            errorDiv.classList.remove('show');
+            btn.disabled = true;
+            btn.textContent = 'Entrando...';
+            
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: username, password: password })
+            })
+            .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+            .then(function(arr) {
+                var status = arr[0], data = arr[1];
+                
+                if (status === 200 && data.tokens) {
+                    // Salvar tokens
+                    localStorage.setItem('access_token', data.tokens.access);
+                    localStorage.setItem('refresh_token', data.tokens.refresh);
+                    
+                    // Redirecionar para dashboard
+                    window.location.href = '/';
+                } else {
+                    // Mostrar erro
+                    errorDiv.textContent = data.message || data.detail || 'Erro ao fazer login';
+                    errorDiv.classList.add('show');
+                    btn.disabled = false;
+                    btn.textContent = 'Entrar';
+                }
+            })
+            .catch(function(e) {
+                errorDiv.textContent = 'Erro de conexão: ' + e.message;
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Entrar';
+            });
+        };
+    </script>
+</body>
+</html>
+"""
+
+
+REGISTER_HTML = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar-se - PayPi-Bridge</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+        .register-container {
+            width: 100%;
+            max-width: 480px;
+        }
+        .register-card {
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .logo-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-header img {
+            height: 64px;
+            width: auto;
+            margin-bottom: 1rem;
+        }
+        .logo-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(90deg, #38bdf8, #a78bfa, #FF9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+            background: rgba(15, 23, 42, 0.5);
+            color: #e2e8f0;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .btn-register {
+            width: 100%;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            padding: 0.875rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+        }
+        .btn-register:hover {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .btn-register:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        .login-link a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .back-link {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .back-link:hover {
+            color: #e2e8f0;
+        }
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-link">← Voltar</a>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="logo-header">
+                <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge">
+                <h1>Criar Conta</h1>
+            </div>
+            
+            <div class="error-message" id="error-message"></div>
+            
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" name="username" placeholder="usuario123" required autofocus>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" name="email" placeholder="usuario@example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Senha *</label>
+                    <input type="password" id="password" name="password" placeholder="Senha forte" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password_confirm">Confirmar Senha *</label>
+                    <input type="password" id="password_confirm" name="password_confirm" placeholder="Confirme a senha" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="first_name">Nome</label>
+                        <input type="text" id="first_name" name="first_name" placeholder="João">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="last_name">Sobrenome</label>
+                        <input type="text" id="last_name" name="last_name" placeholder="Silva">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-register" id="btn-register">
+                    Criar Conta
+                </button>
+            </form>
+            
+            <div class="login-link">
+                Já tem uma conta? <a href="/login/">Faça login</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('register-form').onsubmit = function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('btn-register');
+            var errorDiv = document.getElementById('error-message');
+            var password = document.getElementById('password').value;
+            var passwordConfirm = document.getElementById('password_confirm').value;
+            
+            // Validar senhas
+            if (password !== passwordConfirm) {
+                errorDiv.textContent = 'As senhas não coincidem!';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            // Esconder erro anterior
+            errorDiv.classList.remove('show');
+            btn.disabled = true;
+            btn.textContent = 'Criando conta...';
+            
+            var formData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password,
+                password_confirm: passwordConfirm,
+                first_name: document.getElementById('first_name').value || '',
+                last_name: document.getElementById('last_name').value || ''
+            };
+            
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+            .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+            .then(function(arr) {
+                var status = arr[0], data = arr[1];
+                
+                if (status === 201 && data.tokens) {
+                    // Salvar tokens
+                    localStorage.setItem('access_token', data.tokens.access);
+                    localStorage.setItem('refresh_token', data.tokens.refresh);
+                    
+                    // Redirecionar para dashboard
+                    window.location.href = '/';
+                } else {
+                    // Mostrar erro
+                    var errorMsg = data.message || data.detail || 'Erro ao criar conta';
+                    if (data.username) errorMsg += '\\n' + data.username.join('\\n');
+                    if (data.email) errorMsg += '\\n' + data.email.join('\\n');
+                    if (data.password) errorMsg += '\\n' + data.password.join('\\n');
+                    errorDiv.textContent = errorMsg;
+                    errorDiv.classList.add('show');
+                    btn.disabled = false;
+                    btn.textContent = 'Criar Conta';
+                }
+            })
+            .catch(function(e) {
+                errorDiv.textContent = 'Erro de conexão: ' + e.message;
+                errorDiv.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Criar Conta';
+            });
+        };
+    </script>
+</body>
+</html>
+"""
+
+
+@ensure_csrf_cookie
+def login_view(request):
+    return HttpResponse(LOGIN_HTML)
+
+
+@ensure_csrf_cookie
+def register_view(request):
+    return HttpResponse(REGISTER_HTML)
+
+
 urlpatterns = [
     path("", home_view),
     path("health/", health_view),
     path("forms/", forms_view),
     path("dashboard/", dashboard_view, name="dashboard"),
+    path("login/", login_view, name="login"),
+    path("register/", register_view, name="register"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
