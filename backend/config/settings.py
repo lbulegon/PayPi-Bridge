@@ -131,6 +131,12 @@ DATABASES = {
     }
 }
 
+# ========== INTERNATIONALIZATION ==========
+LANGUAGE_CODE = "pt-br"
+TIME_ZONE = "America/Sao_Paulo"
+USE_I18N = True
+USE_TZ = True
+
 # ========== CELERY CONFIGURATION ==========
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
@@ -164,8 +170,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ========== I18N / TZ ==========
-LANGUAGE_CODE = "pt-br"
-TIME_ZONE = "America/Sao_Paulo"
+# TIME_ZONE já definido acima (antes de CELERY)
 USE_I18N = True
 USE_TZ = True
 
