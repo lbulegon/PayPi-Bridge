@@ -307,8 +307,6 @@ def home_view(request):
         <!-- Hero Section -->
         <section class="hero">
             <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="hero-logo">
-            <h1>PayPi-Bridge</h1>
-            <p class="hero-subtitle">Gateway de On/Off-Ramp Pi → BRL</p>
             <p class="hero-description">
                 Conecte pagamentos em <strong style="color: #FF9800;">Pi Network</strong> com o sistema bancário brasileiro através de <strong style="color: #38bdf8;">Open Finance</strong>. 
                 Converta Pi em reais (BRL) de forma segura, rápida e automatizada, com confirmação via blockchain e liquidação bancária instantânea.
