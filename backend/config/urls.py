@@ -905,6 +905,11 @@ DASHBOARD_HTML = """
             letter-spacing: 0.05em;
             margin: 0 0 0.75rem 0;
         }
+        .card .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
         .card .links a {
             display: inline-block;
             color: #38bdf8;
@@ -914,7 +919,6 @@ DASHBOARD_HTML = """
             margin-bottom: 0.25rem;
         }
         .card .links a:hover { color: #7dd3fc; text-decoration: underline; }
-        .links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
         .user-info {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
