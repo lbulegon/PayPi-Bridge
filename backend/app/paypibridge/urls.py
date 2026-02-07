@@ -10,6 +10,15 @@ from .views import (
 )
 
 urlpatterns = [
+    # Authentication
+    path("auth/register", RegisterView.as_view(), name="register"),
+    path("auth/login", LoginView.as_view(), name="login"),
+    path("auth/refresh", RefreshTokenView.as_view(), name="token-refresh"),
+    path("auth/logout", LogoutView.as_view(), name="logout"),
+    path("auth/me", UserProfileView.as_view(), name="user-profile"),
+    path("auth/change-password", ChangePasswordView.as_view(), name="change-password"),
+    path("auth/check", CheckAuthView.as_view(), name="check-auth"),
+    
     # PaymentIntent
     path("checkout/pi-intent", IntentView.as_view(), name="create-intent"),
     path("intents", IntentListView.as_view(), name="list-intents"),

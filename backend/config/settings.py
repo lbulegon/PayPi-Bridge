@@ -263,6 +263,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ROTATE_REFRESH_TOKENS": True,  # Gera novo refresh token a cada refresh
+    "BLACKLIST_AFTER_ROTATION": True,  # Invalida refresh token antigo após rotação
+    "UPDATE_LAST_LOGIN": True,  # Atualiza last_login do usuário
 }
 
 # CORS - Configuração fixa para funcionar em qualquer ambiente
