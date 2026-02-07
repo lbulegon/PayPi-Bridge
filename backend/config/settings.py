@@ -192,6 +192,8 @@ else:
 # WhiteNoise configuração adicional
 WHITENOISE_USE_FINDERS = True  # Permite servir arquivos de STATICFILES_DIRS em desenvolvimento
 WHITENOISE_AUTOREFRESH = DEBUG  # Recarrega automaticamente em desenvolvimento
+# WhiteNoise root - garantir que serve de STATIC_ROOT
+WHITENOISE_ROOT = STATIC_ROOT
 
 # ========== LOGIN REDIRECTS ==========
 LOGIN_URL = "/admin/login/"
