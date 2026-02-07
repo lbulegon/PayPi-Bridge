@@ -713,9 +713,9 @@ FORMS_HTML = """
                         localStorage.setItem('access_token', j.tokens.access);
                         localStorage.setItem('refresh_token', j.tokens.refresh);
                         showResult(el, 'Conta criada com sucesso! Redirecionando...', true);
-                        // Redirecionar para dashboard após 1 segundo
+                        // Redirecionar para página inicial (dashboard) após 1 segundo
                         setTimeout(function() {
-                            window.location.href = '/dashboard/';
+                            window.location.href = '/';
                         }, 1000);
                     } else {
                         showResult(el, JSON.stringify(j, null, 2), false);
