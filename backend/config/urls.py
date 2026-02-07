@@ -19,64 +19,174 @@ def home_view(request):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PayPi-Bridge</title>
+    <title>PayPi-Bridge - Gateway Pi → BRL</title>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
-            padding: 2rem;
+            padding: 0;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             min-height: 100vh;
             color: #e2e8f0;
         }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .hero {
+            text-align: center;
+            padding: 4rem 2rem;
+            margin-bottom: 4rem;
+        }
+        .hero-logo {
+            height: 120px;
+            width: auto;
+            margin-bottom: 2rem;
+        }
         h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
             background: linear-gradient(90deg, #38bdf8, #a78bfa, #FF9800);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            -webkit-text-stroke: 1px #FF9800;
-            paint-order: stroke fill;
+            line-height: 1.2;
         }
-        .subtitle { color: #94a3b8; margin-bottom: 2rem; font-size: 0.95rem; }
-        .card {
-            background: rgba(30, 41, 59, 0.8);
-            border: 1px solid rgba(71, 85, 105, 0.5);
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+        .hero-description {
+            font-size: 1.125rem;
+            color: #cbd5e1;
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            line-height: 1.8;
+        }
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 4rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            padding: 1rem 2rem;
             border-radius: 12px;
-            padding: 1.25rem 1.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        }
+        .btn-secondary {
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid #38bdf8;
+            color: #38bdf8;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .btn-secondary:hover {
+            background: rgba(56, 189, 248, 0.1);
+            transform: translateY(-2px);
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+        .feature-card {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: #38bdf8;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        .feature-icon {
+            font-size: 3rem;
             margin-bottom: 1rem;
         }
-        .card h2 {
-            font-size: 1rem;
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 0.75rem;
+        }
+        .feature-description {
             color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin: 0 0 0.75rem 0;
+            line-height: 1.6;
         }
-        .card a {
-            display: inline-block;
-            color: #38bdf8;
-            text-decoration: none;
-            padding: 0.4rem 0;
-            margin-right: 1rem;
-            margin-bottom: 0.25rem;
+        .how-it-works {
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 16px;
+            padding: 3rem;
+            margin-bottom: 4rem;
         }
-        .card a:hover { color: #7dd3fc; text-decoration: underline; }
-        .links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .badge {
-            display: inline-block;
-            background: rgba(56, 189, 248, 0.2);
-            color: #38bdf8;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin-left: 0.5rem;
+        .how-it-works h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 2rem;
+            text-align: center;
         }
-        .footer { margin-top: 2rem; color: #64748b; font-size: 0.85rem; }
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+        }
+        .step {
+            text-align: center;
+        }
+        .step-number {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #38bdf8, #a78bfa);
+            color: #0f172a;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+        }
+        .step-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        .step-description {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #64748b;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(71, 85, 105, 0.5);
+            margin-top: 4rem;
+        }
         .logo-header { 
             display: flex; 
             align-items: flex-end; 
@@ -194,188 +304,131 @@ def home_view(request):
 </head>
 <body>
     <div class="container">
-        <header class="logo-header">
-            <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="logo">
-            <div class="welcome-message" id="welcome-message">
-                👋 Bem-vindo! <a href="/login/">Faça login</a> ou 
-                <a href="/register/">crie uma conta</a> para acessar seu dashboard.
+        <!-- Hero Section -->
+        <section class="hero">
+            <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="hero-logo">
+            <h1>PayPi-Bridge</h1>
+            <p class="hero-subtitle">Gateway de On/Off-Ramp Pi → BRL</p>
+            <p class="hero-description">
+                Conecte pagamentos em <strong style="color: #FF9800;">Pi Network</strong> com o sistema bancário brasileiro através de <strong style="color: #38bdf8;">Open Finance</strong>. 
+                Converta Pi em reais (BRL) de forma segura, rápida e automatizada, com confirmação via blockchain e liquidação bancária instantânea.
+            </p>
+            <div class="cta-buttons">
+                <a href="/login/" class="btn-primary">Entrar no Dashboard</a>
+                <a href="/register/" class="btn-secondary">Criar Conta</a>
             </div>
-        </header>
+        </section>
 
-        <!-- User Info Header (mostrado quando autenticado) -->
-        <div class="user-header" id="user-header">
-            <div class="user-info">
-                <div class="user-details">
-                    <div class="user-avatar" id="user-avatar">U</div>
-                    <div class="user-text">
-                        <div class="user-name" id="user-name">Carregando...</div>
-                        <div class="user-email" id="user-email">-</div>
+        <!-- Features Section -->
+        <section class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3 class="feature-title">Integração Pi Network</h3>
+                <p class="feature-description">
+                    Conecte-se diretamente com a Pi Network para receber pagamentos em Pi, 
+                    verificando transações e saldos em tempo real.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏦</div>
+                <h3 class="feature-title">Open Finance</h3>
+                <p class="feature-description">
+                    Integração completa com Open Finance brasileiro para realizar pagamentos Pix, 
+                    vincular contas bancárias e reconciliar transações automaticamente.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⛓️</div>
+                <h3 class="feature-title">Blockchain Soroban</h3>
+                <p class="feature-description">
+                    Confirmação de pagamentos via contratos inteligentes na blockchain Soroban, 
+                    garantindo transparência e segurança nas transações.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3 class="feature-title">Liquidação Instantânea</h3>
+                <p class="feature-description">
+                    Conversão automática de Pi para BRL com liquidação bancária via Pix, 
+                    permitindo recebimentos instantâneos em sua conta.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3 class="feature-title">Segurança Total</h3>
+                <p class="feature-description">
+                    Autenticação JWT, webhooks assinados com HMAC, idempotência e auditoria completa 
+                    de todas as transações para máxima segurança.
+                </p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3 class="feature-title">API Completa</h3>
+                <p class="feature-description">
+                    API RESTful completa com documentação OpenAPI/Swagger, 
+                    permitindo integração fácil com qualquer aplicação.
+                </p>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="how-it-works">
+            <h2>Como Funciona</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Payment Intent</div>
+                    <div class="step-description">
+                        DApp cria um PaymentIntent on-chain no contrato Soroban e emite um evento
                     </div>
                 </div>
-                <button class="btn-logout" onclick="logout()">Sair</button>
-            </div>
-            <div class="stats-row" id="stats-row" style="margin-top: 1rem;">
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-intents">-</div>
-                    <div class="stat-label">Payment Intents</div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Webhook CCIP</div>
+                    <div class="step-description">
+                        Relayer (CCIP ou custom) envia webhook assinado para o backend
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-consents">-</div>
-                    <div class="stat-label">Consents</div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Validação</div>
+                    <div class="step-description">
+                        Backend valida o pagamento Pi e inicia processo de liquidação
+                    </div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="stat-payouts">-</div>
-                    <div class="stat-label">Payouts</div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Open Finance</div>
+                    <div class="step-description">
+                        Pagamento Pix é criado via Open Finance e enviado para sua conta bancária
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Reconciliação</div>
+                    <div class="step-description">
+                        Sistema reconcilia automaticamente via API de transações bancárias
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="card" style="border-left: 3px solid #22c55e;">
-            <h2 style="color: #22c55e;">🔐 Autenticação</h2>
-            <div class="links">
-                <a href="/login/">Login</a>
-                <a href="/register/">Registro</a>
-                <a href="/api/auth/me" id="link-profile" style="display:none;">Meu Perfil</a>
-                <a href="/api/auth/check">Verificar Auth</a>
+        <!-- CTA Final -->
+        <section style="text-align: center; margin-bottom: 4rem;">
+            <h2 style="font-size: 2rem; color: #e2e8f0; margin-bottom: 1rem;">Pronto para começar?</h2>
+            <p style="color: #94a3b8; font-size: 1.125rem; margin-bottom: 2rem;">
+                Acesse seu dashboard e comece a converter Pi em BRL hoje mesmo
+            </p>
+            <div class="cta-buttons">
+                <a href="/login/" class="btn-primary">Acessar Dashboard</a>
+                <a href="/register/" class="btn-secondary">Criar Conta Grátis</a>
             </div>
-        </div>
+        </section>
 
-        <div class="card">
-            <h2>Status e documentação</h2>
-            <div class="links">
-                <a href="/health/">Health</a>
-                <a href="/forms/">Formulários de teste</a>
-                <a href="/api/schema/swagger-ui/">Swagger UI</a>
-                <a href="/api/schema/redoc/">ReDoc</a>
-                <a href="/api/schema/">OpenAPI JSON</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>PaymentIntent e checkout</h2>
-            <div class="links">
-                <a href="/api/checkout/pi-intent">POST checkout/pi-intent</a>
-                <a href="/api/intents">GET intents</a>
-                <a href="/api/payments/verify">POST payments/verify</a>
-            </div>
-        </div>
-
-        <div class="card pi">
-            <h2>Pi Network</h2>
-            <div class="links">
-                <a href="/api/pi/status">GET pi/status</a>
-                <a href="/api/pi/balance">GET pi/balance</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Open Finance</h2>
-            <div class="links">
-                <a href="/api/consents">Consents</a>
-                <a href="/api/bank-accounts/link">Link bank account</a>
-                <a href="/api/payouts/pix">Payouts Pix</a>
-                <a href="/api/reconcile">Reconcile</a>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>Webhooks</h2>
-            <div class="links">
-                <a href="/api/webhooks/ccip">POST webhooks/ccip</a>
-            </div>
-        </div>
-
-        <p class="footer">PayPi-Bridge · Django + DRF · Pi Network & Open Finance</p>
+        <footer class="footer">
+            <p>PayPi-Bridge · Gateway Pi → BRL · Django + DRF · Pi Network & Open Finance</p>
+        </footer>
     </div>
-    <script>
-        function getAccessToken() {
-            return localStorage.getItem('access_token') || null;
-        }
-
-        function logout() {
-            var refreshToken = localStorage.getItem('refresh_token');
-            if (refreshToken) {
-                fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh: refreshToken })
-                }).catch(function() {});
-            }
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            window.location.reload();
-        }
-
-        function loadUserDashboard() {
-            var token = getAccessToken();
-            var welcomeMessage = document.getElementById('welcome-message');
-            
-            if (!token) {
-                // Não autenticado - mostrar mensagem de boas-vindas no header
-                welcomeMessage.style.display = 'block';
-                return;
-            }
-
-            // Usuário autenticado - esconder mensagem de boas-vindas
-            welcomeMessage.style.display = 'none';
-
-            // Usuário autenticado - carregar informações
-            fetch('/api/auth/me', {
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(function(r) {
-                if (r.status === 401) {
-                    // Token inválido ou expirado
-                    localStorage.removeItem('access_token');
-                    localStorage.removeItem('refresh_token');
-                    welcomeMessage.style.display = 'block';
-                    return null;
-                }
-                return r.json();
-            })
-            .then(function(data) {
-                if (!data) return;
-
-                var user = data.user || data;
-                var userHeader = document.getElementById('user-header');
-                var linkProfile = document.getElementById('link-profile');
-
-                // Mostrar header do usuário
-                userHeader.classList.add('active');
-                linkProfile.style.display = 'inline-block';
-
-                // Preencher informações do usuário
-                var username = user.username || 'Usuário';
-                var email = user.email || '-';
-                var firstName = user.first_name || '';
-                var lastName = user.last_name || '';
-
-                document.getElementById('user-name').textContent = 
-                    (firstName || lastName) ? (firstName + ' ' + lastName).trim() : username;
-                document.getElementById('user-email').textContent = email;
-                
-                // Avatar com primeira letra
-                var avatar = document.getElementById('user-avatar');
-                avatar.textContent = username.charAt(0).toUpperCase();
-
-                // Carregar estatísticas (placeholder por enquanto)
-                // TODO: Implementar endpoints para buscar estatísticas reais
-                document.getElementById('stat-intents').textContent = '-';
-                document.getElementById('stat-consents').textContent = '-';
-                document.getElementById('stat-payouts').textContent = '-';
-            })
-            .catch(function(e) {
-                console.error('Erro ao carregar dashboard:', e);
-                document.getElementById('welcome-message').style.display = 'block';
-            });
-        }
-
-        // Carregar dashboard ao carregar a página
-        loadUserDashboard();
-    </script>
 </body>
 </html>
 """
@@ -845,6 +898,23 @@ DASHBOARD_HTML = """
             color: #38bdf8;
             font-size: 1.25rem;
         }
+        .card h2.section-title {
+            font-size: 1rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 0 0 0.75rem 0;
+        }
+        .card .links a {
+            display: inline-block;
+            color: #38bdf8;
+            text-decoration: none;
+            padding: 0.4rem 0;
+            margin-right: 1rem;
+            margin-bottom: 0.25rem;
+        }
+        .card .links a:hover { color: #7dd3fc; text-decoration: underline; }
+        .links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
         .user-info {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1007,7 +1077,7 @@ DASHBOARD_HTML = """
             }
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            window.location.href = '/forms/#auth-login';
+            window.location.href = '/login/';
         }
 
         function loadUserProfile() {
@@ -1017,7 +1087,7 @@ DASHBOARD_HTML = """
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('error').textContent = 'Não autenticado. Redirecionando para login...';
                 setTimeout(function() {
-                    window.location.href = '/forms/#auth-login';
+                    window.location.href = '/login/';
                 }, 2000);
                 return;
             }
@@ -1056,7 +1126,7 @@ DASHBOARD_HTML = """
                 document.getElementById('error').style.display = 'block';
                 document.getElementById('error').textContent = 'Erro ao carregar perfil: ' + e.message + '. Redirecionando para login...';
                 setTimeout(function() {
-                    window.location.href = '/forms/#auth-login';
+                    window.location.href = '/login/';
                 }, 3000);
             });
         }
