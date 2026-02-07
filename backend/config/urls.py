@@ -146,8 +146,18 @@ def home_view(request):
         }
         .steps {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 1.5rem;
+        }
+        @media (max-width: 1200px) {
+            .steps {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .steps {
+                grid-template-columns: 1fr;
+            }
         }
         .step {
             text-align: center;
