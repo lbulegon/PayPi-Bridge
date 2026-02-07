@@ -5,7 +5,8 @@ from .views import (
     ConsentView, ConsentDetailView,
     LinkBankAccountView, ReconcilePaymentView,
     FXQuoteView, RelayerStatusView,
-    PiNetworkWebhookView, HealthCheckView, TestEndpointsView
+    PiNetworkWebhookView, HealthCheckView, TestEndpointsView,
+    AdminStatsView, AdminIntentsView
 )
 
 urlpatterns = [
