@@ -79,21 +79,150 @@ def home_view(request):
         .footer { margin-top: 2rem; color: #64748b; font-size: 0.85rem; }
         .logo-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
         .logo-header img { height: 48px; width: auto; display: block; }
+        .user-header {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        .user-header.active { display: block; }
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .user-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #38bdf8, #a78bfa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .user-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+        .user-email {
+            color: #94a3b8;
+            font-size: 0.875rem;
+        }
+        .btn-logout {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-logout:hover { background: #dc2626; }
+        .auth-prompt {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .auth-prompt.hidden { display: none; }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat-item {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-bottom: 0.25rem;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="logo-header">
             <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="logo">
-            <p class="subtitle">Gateway Pi → BRL · API e documentação</p>
+            <div style="flex: 1;">
+                <h1 style="margin: 0; font-size: 1.5rem;">PayPi-Bridge</h1>
+                <p class="subtitle" style="margin: 0;">Gateway Pi → BRL · Dashboard e API</p>
+            </div>
         </header>
+
+        <!-- User Info Header (mostrado quando autenticado) -->
+        <div class="user-header" id="user-header">
+            <div class="user-info">
+                <div class="user-details">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-text">
+                        <div class="user-name" id="user-name">Carregando...</div>
+                        <div class="user-email" id="user-email">-</div>
+                    </div>
+                </div>
+                <button class="btn-logout" onclick="logout()">Sair</button>
+            </div>
+            <div class="stats-row" id="stats-row" style="margin-top: 1rem;">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-intents">-</div>
+                    <div class="stat-label">Payment Intents</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-consents">-</div>
+                    <div class="stat-label">Consents</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-payouts">-</div>
+                    <div class="stat-label">Payouts</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt de autenticação (mostrado quando não autenticado) -->
+        <div class="auth-prompt" id="auth-prompt">
+            <p style="margin: 0; color: #94a3b8;">
+                👋 Bem-vindo! <a href="/forms/#auth-login" style="color: #22c55e; text-decoration: none; font-weight: 600;">Faça login</a> ou 
+                <a href="/forms/#auth-register" style="color: #22c55e; text-decoration: none; font-weight: 600;">crie uma conta</a> para acessar seu dashboard.
+            </p>
+        </div>
 
         <div class="card" style="border-left: 3px solid #22c55e;">
             <h2 style="color: #22c55e;">🔐 Autenticação</h2>
             <div class="links">
                 <a href="/forms/#auth-login">Login</a>
                 <a href="/forms/#auth-register">Registro</a>
-                <a href="/api/auth/me">Meu Perfil</a>
+                <a href="/api/auth/me" id="link-profile" style="display:none;">Meu Perfil</a>
                 <a href="/api/auth/check">Verificar Auth</a>
             </div>
         </div>
@@ -145,6 +274,92 @@ def home_view(request):
 
         <p class="footer">PayPi-Bridge · Django + DRF · Pi Network & Open Finance</p>
     </div>
+    <script>
+        function getAccessToken() {
+            return localStorage.getItem('access_token') || null;
+        }
+
+        function logout() {
+            var refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                }).catch(function() {});
+            }
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.reload();
+        }
+
+        function loadUserDashboard() {
+            var token = getAccessToken();
+            if (!token) {
+                // Não autenticado - mostrar prompt de login
+                document.getElementById('auth-prompt').classList.remove('hidden');
+                return;
+            }
+
+            // Usuário autenticado - carregar informações
+            fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) {
+                if (r.status === 401) {
+                    // Token inválido ou expirado
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                    document.getElementById('auth-prompt').classList.remove('hidden');
+                    return null;
+                }
+                return r.json();
+            })
+            .then(function(data) {
+                if (!data) return;
+
+                var user = data.user || data;
+                var userHeader = document.getElementById('user-header');
+                var authPrompt = document.getElementById('auth-prompt');
+                var linkProfile = document.getElementById('link-profile');
+
+                // Mostrar header do usuário
+                userHeader.classList.add('active');
+                authPrompt.classList.add('hidden');
+                linkProfile.style.display = 'inline-block';
+
+                // Preencher informações do usuário
+                var username = user.username || 'Usuário';
+                var email = user.email || '-';
+                var firstName = user.first_name || '';
+                var lastName = user.last_name || '';
+
+                document.getElementById('user-name').textContent = 
+                    (firstName || lastName) ? (firstName + ' ' + lastName).trim() : username;
+                document.getElementById('user-email').textContent = email;
+                
+                // Avatar com primeira letra
+                var avatar = document.getElementById('user-avatar');
+                avatar.textContent = username.charAt(0).toUpperCase();
+
+                // Carregar estatísticas (placeholder por enquanto)
+                // TODO: Implementar endpoints para buscar estatísticas reais
+                document.getElementById('stat-intents').textContent = '-';
+                document.getElementById('stat-consents').textContent = '-';
+                document.getElementById('stat-payouts').textContent = '-';
+            })
+            .catch(function(e) {
+                console.error('Erro ao carregar dashboard:', e);
+                document.getElementById('auth-prompt').classList.remove('hidden');
+            });
+        }
+
+        // Carregar dashboard ao carregar a página
+        loadUserDashboard();
+    </script>
 </body>
 </html>
 """
