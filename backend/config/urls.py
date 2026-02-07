@@ -121,10 +121,6 @@ def home_view(request):
             border-color: #38bdf8;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
         }
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
         .feature-title {
             font-size: 1.5rem;
             font-weight: 700;
