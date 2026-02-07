@@ -175,6 +175,10 @@ def home_view(request):
     <div class="container">
         <header class="logo-header">
             <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="logo">
+            <div class="welcome-message" id="welcome-message">
+                👋 Bem-vindo! <a href="/forms/#auth-login">Faça login</a> ou 
+                <a href="/forms/#auth-register">crie uma conta</a> para acessar seu dashboard.
+            </div>
         </header>
 
         <!-- User Info Header (mostrado quando autenticado) -->
@@ -203,14 +207,6 @@ def home_view(request):
                     <div class="stat-label">Payouts</div>
                 </div>
             </div>
-        </div>
-
-        <!-- Prompt de autenticação (mostrado quando não autenticado) -->
-        <div class="auth-prompt" id="auth-prompt">
-            <p style="margin: 0; color: #94a3b8;">
-                👋 Bem-vindo! <a href="/forms/#auth-login" style="color: #22c55e; text-decoration: none; font-weight: 600;">Faça login</a> ou 
-                <a href="/forms/#auth-register" style="color: #22c55e; text-decoration: none; font-weight: 600;">crie uma conta</a> para acessar seu dashboard.
-            </p>
         </div>
 
         <div class="card" style="border-left: 3px solid #22c55e;">
@@ -291,11 +287,16 @@ def home_view(request):
 
         function loadUserDashboard() {
             var token = getAccessToken();
+            var welcomeMessage = document.getElementById('welcome-message');
+            
             if (!token) {
-                // Não autenticado - mostrar prompt de login
-                document.getElementById('auth-prompt').classList.remove('hidden');
+                // Não autenticado - mostrar mensagem de boas-vindas no header
+                welcomeMessage.style.display = 'block';
                 return;
             }
+
+            // Usuário autenticado - esconder mensagem de boas-vindas
+            welcomeMessage.style.display = 'none';
 
             // Usuário autenticado - carregar informações
             fetch('/api/auth/me', {
@@ -309,7 +310,7 @@ def home_view(request):
                     // Token inválido ou expirado
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
-                    document.getElementById('auth-prompt').classList.remove('hidden');
+                    welcomeMessage.style.display = 'block';
                     return null;
                 }
                 return r.json();
@@ -319,12 +320,10 @@ def home_view(request):
 
                 var user = data.user || data;
                 var userHeader = document.getElementById('user-header');
-                var authPrompt = document.getElementById('auth-prompt');
                 var linkProfile = document.getElementById('link-profile');
 
                 // Mostrar header do usuário
                 userHeader.classList.add('active');
-                authPrompt.classList.add('hidden');
                 linkProfile.style.display = 'inline-block';
 
                 // Preencher informações do usuário
