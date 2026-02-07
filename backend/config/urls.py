@@ -88,6 +88,16 @@ def home_view(request):
             <p class="subtitle">Gateway Pi → BRL · API e documentação</p>
         </header>
 
+        <div class="card" style="border-left: 3px solid #22c55e;">
+            <h2 style="color: #22c55e;">🔐 Autenticação</h2>
+            <div class="links">
+                <a href="/forms/#auth-login">Login</a>
+                <a href="/forms/#auth-register">Registro</a>
+                <a href="/api/auth/me">Meu Perfil</a>
+                <a href="/api/auth/check">Verificar Auth</a>
+            </div>
+        </div>
+
         <div class="card">
             <h2>Status e documentação</h2>
             <div class="links">
@@ -232,9 +242,69 @@ FORMS_HTML = """
         <h1>Formulários de teste</h1>
         <p class="subtitle">Consultas à API PayPi-Bridge</p>
 
-        <div class="card">
+        <div class="card" id="auth-login" style="border-left: 3px solid #22c55e;">
+            <h2 style="color: #22c55e;">🔐 Login (POST /api/auth/login)</h2>
+            <form id="form-login">
+                <div class="form-group">
+                    <label>Username ou Email</label>
+                    <input type="text" name="username" placeholder="usuario123 ou usuario@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" name="password" placeholder="Sua senha" required>
+                </div>
+                <button type="submit" class="btn" style="background: #22c55e;">Fazer Login</button>
+            </form>
+            <div id="result-login" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="card" id="auth-register" style="border-left: 3px solid #22c55e;">
+            <h2 style="color: #22c55e;">📝 Registro (POST /api/auth/register)</h2>
+            <form id="form-register">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" placeholder="usuario123" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="usuario@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" name="password" placeholder="Senha forte" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirmar Senha</label>
+                    <input type="password" name="password_confirm" placeholder="Confirme a senha" required>
+                </div>
+                <div class="form-group">
+                    <label>Nome (opcional)</label>
+                    <input type="text" name="first_name" placeholder="João">
+                </div>
+                <div class="form-group">
+                    <label>Sobrenome (opcional)</label>
+                    <input type="text" name="last_name" placeholder="Silva">
+                </div>
+                <button type="submit" class="btn" style="background: #22c55e;">Criar Conta</button>
+            </form>
+            <div id="result-register" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="card" id="auth-profile" style="border-left: 3px solid #22c55e;">
+            <h2 style="color: #22c55e;">👤 Meu Perfil (GET /api/auth/me)</h2>
+            <button type="button" class="btn" id="btn-profile" style="background: #22c55e;">Carregar Perfil</button>
+            <div id="result-profile" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="card pi">
+            <h2>Status Pi (GET /api/pi/status)</h2>
+            <button type="button" class="btn btn-pi" id="btn-status">Consultar status</button>
+            <div id="result-status" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="card pi">
             <h2>Saldo Pi (GET /api/pi/balance)</h2>
-            <button type="button" class="btn" id="btn-balance">Consultar saldo</button>
+            <button type="button" class="btn btn-pi" id="btn-balance">Consultar saldo</button>
             <div id="result-balance" class="result" style="display:none;"></div>
         </div>
 
