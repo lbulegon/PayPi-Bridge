@@ -430,6 +430,114 @@ FORMS_HTML = """
                 })
                 .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
         };
+
+        // Login form handler
+        document.getElementById('form-login').onsubmit = function(e) {
+            e.preventDefault();
+            var el = document.getElementById('result-login');
+            var fd = new FormData(this);
+            var body = {
+                username: fd.get('username'),
+                password: fd.get('password')
+            };
+            el.style.display = 'block';
+            el.textContent = 'Fazendo login...';
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+                .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+                .then(function(arr) {
+                    var status = arr[0], j = arr[1];
+                    if (status === 200 && j.tokens) {
+                        // Salvar tokens no localStorage
+                        localStorage.setItem('access_token', j.tokens.access);
+                        localStorage.setItem('refresh_token', j.tokens.refresh);
+                        showResult(el, 'Login realizado com sucesso! Redirecionando...', true);
+                        // Redirecionar para dashboard após 1 segundo
+                        setTimeout(function() {
+                            window.location.href = '/dashboard/';
+                        }, 1000);
+                    } else {
+                        showResult(el, JSON.stringify(j, null, 2), false);
+                    }
+                })
+                .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
+        };
+
+        // Register form handler
+        document.getElementById('form-register').onsubmit = function(e) {
+            e.preventDefault();
+            var el = document.getElementById('result-register');
+            var fd = new FormData(this);
+            if (fd.get('password') !== fd.get('password_confirm')) {
+                showResult(el, 'As senhas não coincidem!', false);
+                return;
+            }
+            var body = {
+                username: fd.get('username'),
+                email: fd.get('email'),
+                password: fd.get('password'),
+                password_confirm: fd.get('password_confirm'),
+                first_name: fd.get('first_name') || '',
+                last_name: fd.get('last_name') || ''
+            };
+            el.style.display = 'block';
+            el.textContent = 'Criando conta...';
+            fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            })
+                .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+                .then(function(arr) {
+                    var status = arr[0], j = arr[1];
+                    if (status === 201 && j.tokens) {
+                        // Salvar tokens no localStorage
+                        localStorage.setItem('access_token', j.tokens.access);
+                        localStorage.setItem('refresh_token', j.tokens.refresh);
+                        showResult(el, 'Conta criada com sucesso! Redirecionando...', true);
+                        // Redirecionar para dashboard após 1 segundo
+                        setTimeout(function() {
+                            window.location.href = '/dashboard/';
+                        }, 1000);
+                    } else {
+                        showResult(el, JSON.stringify(j, null, 2), false);
+                    }
+                })
+                .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
+        };
+
+        // Profile button handler
+        document.getElementById('btn-profile').onclick = function() {
+            var el = document.getElementById('result-profile');
+            var token = localStorage.getItem('access_token');
+            if (!token) {
+                showResult(el, 'Erro: Não autenticado. Faça login primeiro.', false);
+                return;
+            }
+            el.style.display = 'block';
+            el.textContent = 'Carregando...';
+            fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+                .then(function(arr) {
+                    var status = arr[0], j = arr[1];
+                    if (status === 401) {
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                        showResult(el, 'Sessão expirada. Faça login novamente.', false);
+                    } else {
+                        showResult(el, JSON.stringify(j, null, 2), status >= 200 && status < 300);
+                    }
+                })
+                .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
+        };
     </script>
 </body>
 </html>
@@ -441,10 +549,305 @@ def forms_view(request):
     return HttpResponse(FORMS_HTML)
 
 
+DASHBOARD_HTML = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PayPi-Bridge</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(90deg, #38bdf8, #a78bfa, #FF9800);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .btn {
+            background: #38bdf8;
+            color: #0f172a;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { background: #7dd3fc; }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover { background: #dc2626; }
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #38bdf8;
+            font-size: 1.25rem;
+        }
+        .user-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .info-item {
+            padding: 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 6px;
+        }
+        .info-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+        .info-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            background: rgba(15, 23, 42, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #38bdf8;
+            margin-bottom: 0.25rem;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .action-btn {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+        }
+        .action-btn:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: #38bdf8;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard</h1>
+            <div>
+                <a href="/forms/" class="btn" style="margin-right: 0.5rem;">Formulários</a>
+                <button class="btn btn-danger" onclick="logout()">Sair</button>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">Carregando informações do usuário...</div>
+        <div id="error" class="error" style="display:none;"></div>
+        <div id="dashboard" style="display:none;">
+            <div class="card">
+                <h2>👤 Informações do Usuário</h2>
+                <div class="user-info" id="user-info"></div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Estatísticas</h2>
+                <div class="stats-grid" id="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-intents">-</div>
+                        <div class="stat-label">Payment Intents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-consents">-</div>
+                        <div class="stat-label">Consents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-payouts">-</div>
+                        <div class="stat-label">Payouts</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>⚡ Ações Rápidas</h2>
+                <div class="quick-actions">
+                    <a href="/forms/#auth-profile" class="action-btn">
+                        <strong>👤 Meu Perfil</strong><br>
+                        <small>Ver e editar perfil</small>
+                    </a>
+                    <a href="/forms/#form-intent" class="action-btn">
+                        <strong>💰 Criar Payment Intent</strong><br>
+                        <small>Criar novo intent de pagamento</small>
+                    </a>
+                    <a href="/forms/#auth-register" class="action-btn">
+                        <strong>🔐 Gerenciar Conta</strong><br>
+                        <small>Alterar senha e configurações</small>
+                    </a>
+                    <a href="/api/schema/swagger-ui/" class="action-btn">
+                        <strong>📚 API Docs</strong><br>
+                        <small>Documentação da API</small>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCookie(name) {
+            var v = document.cookie.match('(^|;) ?' + name + '=([^;]*)');
+            return v ? v[2] : null;
+        }
+
+        function getAccessToken() {
+            return localStorage.getItem('access_token') || null;
+        }
+
+        function logout() {
+            var refreshToken = localStorage.getItem('refresh_token');
+            if (refreshToken) {
+                fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh: refreshToken })
+                }).catch(function() {});
+            }
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/forms/#auth-login';
+        }
+
+        function loadUserProfile() {
+            var token = getAccessToken();
+            if (!token) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Não autenticado. Redirecionando para login...';
+                setTimeout(function() {
+                    window.location.href = '/forms/#auth-login';
+                }, 2000);
+                return;
+            }
+
+            fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) {
+                if (r.status === 401) {
+                    throw new Error('Token inválido ou expirado');
+                }
+                return r.json();
+            })
+            .then(function(data) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+
+                var user = data.user || data;
+                var userInfo = document.getElementById('user-info');
+                userInfo.innerHTML = 
+                    '<div class="info-item"><div class="info-label">Username</div><div class="info-value">' + (user.username || '-') + '</div></div>' +
+                    '<div class="info-item"><div class="info-label">Email</div><div class="info-value">' + (user.email || '-') + '</div></div>' +
+                    '<div class="info-item"><div class="info-label">Nome</div><div class="info-value">' + (user.first_name || '-') + ' ' + (user.last_name || '') + '</div></div>' +
+                    '<div class="info-item"><div class="info-label">ID</div><div class="info-value">' + (user.id || '-') + '</div></div>';
+
+                // Carregar estatísticas (placeholder por enquanto)
+                document.getElementById('stat-intents').textContent = '-';
+                document.getElementById('stat-consents').textContent = '-';
+                document.getElementById('stat-payouts').textContent = '-';
+            })
+            .catch(function(e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Erro ao carregar perfil: ' + e.message + '. Redirecionando para login...';
+                setTimeout(function() {
+                    window.location.href = '/forms/#auth-login';
+                }, 3000);
+            });
+        }
+
+        // Carregar perfil ao carregar a página
+        loadUserProfile();
+    </script>
+</body>
+</html>
+"""
+
+
+@ensure_csrf_cookie
+def dashboard_view(request):
+    return HttpResponse(DASHBOARD_HTML)
+
+
 urlpatterns = [
     path("", home_view),
     path("health/", health_view),
     path("forms/", forms_view),
+    path("dashboard/", dashboard_view, name="dashboard"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
