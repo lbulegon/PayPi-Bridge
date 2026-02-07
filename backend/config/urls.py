@@ -175,10 +175,6 @@ def home_view(request):
     <div class="container">
         <header class="logo-header">
             <img src="/static/paypibridge/img/logo.png" alt="PayPi-Bridge" class="logo">
-            <div style="flex: 1;">
-                <h1 style="margin: 0; font-size: 1.5rem;">PayPi-Bridge</h1>
-                <p class="subtitle" style="margin: 0;">Gateway Pi → BRL · Dashboard e API</p>
-            </div>
         </header>
 
         <!-- User Info Header (mostrado quando autenticado) -->
