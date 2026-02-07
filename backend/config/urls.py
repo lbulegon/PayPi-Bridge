@@ -1569,6 +1569,11 @@ REGISTER_HTML = """
 
 
 @ensure_csrf_cookie
+def dashboard_view(request):
+    return HttpResponse(DASHBOARD_HTML)
+
+
+@ensure_csrf_cookie
 def login_view(request):
     return HttpResponse(LOGIN_HTML)
 
