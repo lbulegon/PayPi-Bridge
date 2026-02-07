@@ -125,7 +125,31 @@ TEMPLATES = [
 ]
 
 # ========== DATABASE ==========
-# Suporte a DATABASE_URL (Railway, Heroku, etc.) ou variáveis individuais
+# Suporte a DATABASE_URL (Railway, Heroku, etc.) ou variáveis individuais (DB_* ou PG*)
+
+
+def _db_fallback():
+    """Fallback: usa DB_* ou PGDATABASE/PGHOST/PGPASSWORD/PGPORT (padrão libpq)."""
+    db_name = os.getenv("DB_NAME") or os.getenv("PGDATABASE", "paypibridge")
+    db_user = os.getenv("DB_USER") or os.getenv("PGUSER", "postgres")
+    db_password = os.getenv("DB_PASSWORD") or os.getenv("PGPASSWORD", "postgres")
+    db_host = os.getenv("DB_HOST") or os.getenv("PGHOST", "localhost")
+    db_port = os.getenv("DB_PORT") or os.getenv("PGPORT", "5432")
+    sslmode = "disable" if ".railway.internal" in str(db_host) else os.getenv("DB_SSL_MODE", "prefer")
+    return {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": db_name,
+            "USER": db_user,
+            "PASSWORD": db_password,
+            "HOST": db_host,
+            "PORT": db_port,
+            "OPTIONS": {"sslmode": sslmode},
+            "CONN_MAX_AGE": 600,
+        }
+    }
+
+
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 if DATABASE_URL:
@@ -142,6 +166,15 @@ if DATABASE_URL:
         
         # Extrair nome do banco (remove leading /)
         db_name = parsed.path[1:] if parsed.path.startswith("/") else parsed.path
+        host = parsed.hostname or ""
+        
+        # sslmode: rede interna (postgres.railway.internal) não usa SSL;
+        # hosts externos (proxy.rlwy.net, etc.) requerem SSL
+        sslmode = os.getenv("DB_SSL_MODE")
+        if sslmode is None:
+            sslmode = "disable" if ".railway.internal" in host else "require"
+        
+        db_options = {"sslmode": sslmode}
         
         DATABASES = {
             "default": {
@@ -149,11 +182,9 @@ if DATABASE_URL:
                 "NAME": db_name,
                 "USER": parsed.username or "postgres",
                 "PASSWORD": unquote(parsed.password) if parsed.password else "",
-                "HOST": parsed.hostname,
+                "HOST": host,
                 "PORT": str(parsed.port) if parsed.port else "5432",
-                "OPTIONS": {
-                    "sslmode": "require",  # Railway requer SSL
-                },
+                "OPTIONS": db_options,
                 "CONN_MAX_AGE": 600,  # Pool de conexões (10 minutos)
             }
         }
@@ -167,28 +198,10 @@ if DATABASE_URL:
         import logging
         logger = logging.getLogger(__name__)
         logger.error(f"Erro ao parsear DATABASE_URL: {e}. Usando configuração padrão.", exc_info=True)
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": os.getenv("DB_NAME", "paypibridge"),
-                "USER": os.getenv("DB_USER", "postgres"),
-                "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
-                "HOST": os.getenv("DB_HOST", "localhost"),
-                "PORT": os.getenv("DB_PORT", "5432"),
-            }
-        }
+        DATABASES = _db_fallback()
 else:
-    # Configuração usando variáveis individuais
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.getenv("DB_NAME", "paypibridge"),
-            "USER": os.getenv("DB_USER", "postgres"),
-            "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
-            "HOST": os.getenv("DB_HOST", "localhost"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-        }
-    }
+    # Configuração usando variáveis individuais (DB_* ou PG*)
+    DATABASES = _db_fallback()
 
 # ========== INTERNATIONALIZATION ==========
 LANGUAGE_CODE = "pt-br"
