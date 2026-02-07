@@ -348,7 +348,7 @@ def home_view(request):
             })
             .catch(function(e) {
                 console.error('Erro ao carregar dashboard:', e);
-                document.getElementById('auth-prompt').classList.remove('hidden');
+                document.getElementById('welcome-message').style.display = 'block';
             });
         }
 
