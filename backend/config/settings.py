@@ -15,7 +15,12 @@ load_dotenv(BASE_DIR.parent / ".env")
 # ================== STATIC / MEDIA ==================
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Django procura static files em:
+# 1. STATICFILES_DIRS (diretórios adicionais)
+# 2. Cada app/static/ (padrão do Django)
 STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
+# O logo está em: backend/app/paypibridge/static/paypibridge/img/logo.png
+# Será servido como: /static/paypibridge/img/logo.png
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
