@@ -8,6 +8,15 @@ from .views import (
     PiNetworkWebhookView, HealthCheckView, TestEndpointsView,
     AdminStatsView, AdminIntentsView
 )
+from .auth_views import (
+    RegisterView,
+    LoginView,
+    RefreshTokenView,
+    LogoutView,
+    UserProfileView,
+    ChangePasswordView,
+    CheckAuthView,
+)
 
 urlpatterns = [
     # Authentication
