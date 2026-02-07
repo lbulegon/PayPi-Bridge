@@ -733,6 +733,7 @@ FORMS_HTML = """
             fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify(body)
             })
                 .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
@@ -743,10 +744,8 @@ FORMS_HTML = """
                         localStorage.setItem('access_token', j.tokens.access);
                         localStorage.setItem('refresh_token', j.tokens.refresh);
                         showResult(el, 'Login realizado com sucesso! Redirecionando...', true);
-                        // Redirecionar para dashboard após 1 segundo
-                        setTimeout(function() {
-                            window.location.href = '/dashboard/';
-                        }, 1000);
+                        var url = j.redirect_url || '/dashboard/';
+                        window.location.replace(url);
                     } else {
                         showResult(el, JSON.stringify(j, null, 2), false);
                     }
@@ -1339,6 +1338,7 @@ LOGIN_HTML = """
             fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({ username: username, password: password })
             })
             .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
@@ -1350,8 +1350,9 @@ LOGIN_HTML = """
                     localStorage.setItem('access_token', data.tokens.access);
                     localStorage.setItem('refresh_token', data.tokens.refresh);
                     
-                    // Redirecionar para dashboard
-                    window.location.href = '/dashboard/';
+                    // Redirecionar para dashboard (replace evita voltar para login com back)
+                    var url = data.redirect_url || '/dashboard/';
+                    window.location.replace(url);
                 } else {
                     // Mostrar erro
                     errorDiv.textContent = data.message || data.detail || 'Erro ao fazer login';
@@ -1620,7 +1621,8 @@ REGISTER_HTML = """
                     localStorage.setItem('refresh_token', data.tokens.refresh);
                     
                     // Redirecionar para dashboard
-                    window.location.href = '/dashboard/';
+                    var url = data.redirect_url || '/dashboard/';
+                    window.location.replace(url);
                 } else {
                     // Mostrar erro
                     var errorMsg = data.message || data.detail || 'Erro ao criar conta';

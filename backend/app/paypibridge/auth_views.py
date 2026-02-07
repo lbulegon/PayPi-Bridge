@@ -58,7 +58,8 @@ class RegisterView(generics.CreateAPIView):
                 'tokens': {
                     'refresh': str(refresh),
                     'access': str(refresh.access_token),
-                }
+                },
+                'redirect_url': '/dashboard/',
             }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
@@ -170,7 +171,8 @@ class LoginView(TokenObtainPairView):
             'tokens': {
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
-            }
+            },
+            'redirect_url': '/dashboard/',
         }, status=status.HTTP_200_OK)
 
 
