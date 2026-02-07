@@ -426,23 +426,90 @@ class ConsentView(views.APIView):
         data = s.validated_data
         user = _get_user_for_request(request, data.get("user_id"))
         if not user:
+            logger.warning(
+                f"User not found for consent creation",
+                extra={'user_id': data.get("user_id")}
+            )
             return Response(
-                {"detail": "Usuário não encontrado. Use user_id válido ou crie com createtestuser."},
+                {
+                    "code": "USER_NOT_FOUND",
+                    "message": "User not found",
+                    "detail": "Use a valid user_id or create a user with createtestuser"
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
-        consent_service = get_consent_service()
-        consent = consent_service.create_consent(
-            user=user,
-            provider=data["provider"],
-            scopes=data["scopes"],
-            expiration_days=data.get("expiration_days", 90)
-        )
-        if not consent:
+        
+        # Validar scopes
+        valid_scopes = ["payments", "accounts", "consents"]
+        invalid_scopes = [s for s in data["scopes"] if s not in valid_scopes]
+        if invalid_scopes:
             return Response(
-                {"detail": "Failed to create consent"},
+                {
+                    "code": "INVALID_SCOPES",
+                    "message": f"Invalid scopes: {invalid_scopes}",
+                    "detail": f"Valid scopes are: {valid_scopes}",
+                    "invalid_scopes": invalid_scopes
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        consent_service = get_consent_service()
+        
+        try:
+            consent = consent_service.create_consent(
+                user=user,
+                provider=data["provider"],
+                scopes=data["scopes"],
+                expiration_days=data.get("expiration_days", 90)
+            )
+            
+            if not consent:
+                logger.error(
+                    f"Failed to create consent",
+                    extra={
+                        'user_id': user.id,
+                        'provider': data['provider'],
+                        'scopes': data['scopes']
+                    }
+                )
+                return Response(
+                    {
+                        "code": "CONSENT_CREATION_FAILED",
+                        "message": "Failed to create consent",
+                        "detail": "Open Finance API may be unavailable or credentials invalid"
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            logger.info(
+                f"Consent created successfully",
+                extra={
+                    'consent_id': consent.id,
+                    'consent_external_id': consent.consent_id,
+                    'user_id': user.id,
+                    'provider': data['provider']
+                }
+            )
+            
+            return Response(ConsentSerializer(consent).data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            logger.error(
+                f"Unexpected error creating consent: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': user.id,
+                    'provider': data['provider']
+                }
+            )
+            return Response(
+                {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Failed to create consent",
+                    "detail": str(e)
+                },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        return Response(ConsentSerializer(consent).data, status=status.HTTP_201_CREATED)
 
     def get(self, request):
         """List user's consents. Query: user_id (default 1)."""
@@ -451,10 +518,25 @@ class ConsentView(views.APIView):
             user_id = int(user_id)
         except (TypeError, ValueError):
             user_id = 1
+        
         user = get_user_model().objects.filter(id=user_id).first()
         if not user:
-            return Response({"detail": "Usuário não encontrado."}, status=status.HTTP_404_NOT_FOUND)
-        consents = Consent.objects.filter(user=user)
+            return Response(
+                {
+                    "code": "USER_NOT_FOUND",
+                    "message": "User not found",
+                    "detail": f"User {user_id} does not exist"
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        consents = Consent.objects.filter(user=user).order_by("-created_at")
+        
+        logger.info(
+            f"Listed consents for user",
+            extra={'user_id': user_id, 'count': consents.count()}
+        )
+        
         return Response(ConsentSerializer(consents, many=True).data)
 
 
@@ -476,27 +558,79 @@ class ConsentDetailView(views.APIView):
     def get(self, request, consent_id):
         consent = self._get_consent(request, consent_id)
         if not consent:
+            logger.warning(
+                f"Consent {consent_id} not found",
+                extra={'consent_id': consent_id}
+            )
             return Response(
-                {"detail": "Consent not found"},
+                {
+                    "code": "CONSENT_NOT_FOUND",
+                    "message": "Consent not found",
+                    "detail": f"Consent {consent_id} does not exist"
+                },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+        logger.info(
+            f"Retrieved consent",
+            extra={'consent_id': consent.id, 'status': consent.status}
+        )
+        
         return Response(ConsentSerializer(consent).data)
 
     def post(self, request, consent_id):
         """Refresh consent data from Open Finance."""
         consent = self._get_consent(request, consent_id)
         if not consent:
+            logger.warning(
+                f"Consent {consent_id} not found for refresh",
+                extra={'consent_id': consent_id}
+            )
             return Response(
-                {"detail": "Consent not found"},
+                {
+                    "code": "CONSENT_NOT_FOUND",
+                    "message": "Consent not found",
+                    "detail": f"Consent {consent_id} does not exist"
+                },
                 status=status.HTTP_404_NOT_FOUND
             )
+        
         consent_service = get_consent_service()
-        if consent_service.refresh_consent(consent):
-            return Response(ConsentSerializer(consent).data)
-        return Response(
-            {"detail": "Failed to refresh consent"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        
+        try:
+            if consent_service.refresh_consent(consent):
+                logger.info(
+                    f"Consent refreshed successfully",
+                    extra={'consent_id': consent.id, 'new_status': consent.status}
+                )
+                return Response(ConsentSerializer(consent).data)
+            else:
+                logger.error(
+                    f"Failed to refresh consent",
+                    extra={'consent_id': consent.id}
+                )
+                return Response(
+                    {
+                        "code": "REFRESH_FAILED",
+                        "message": "Failed to refresh consent",
+                        "detail": "Open Finance API may be unavailable or consent may not exist externally"
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        except Exception as e:
+            logger.error(
+                f"Unexpected error refreshing consent: {str(e)}",
+                exc_info=True,
+                extra={'consent_id': consent.id}
+            )
+            return Response(
+                {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Failed to refresh consent",
+                    "detail": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class LinkBankAccountView(views.APIView):
@@ -544,35 +678,108 @@ class ReconcilePaymentView(views.APIView):
     """
     permission_classes = [AllowAny]
 
+    @method_decorator(ratelimit(key='ip', rate='30/m', method='POST'))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
     def post(self, request):
         s = ReconcilePaymentSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         data = s.validated_data
         user_id = data.get("user_id", 1)
+        
         consent = Consent.objects.filter(id=data["consent_id"], user_id=user_id).first()
         if not consent:
+            logger.warning(
+                f"Consent {data['consent_id']} not found for user {user_id}",
+                extra={'consent_id': data['consent_id'], 'user_id': user_id}
+            )
             return Response(
-                {"detail": "Consent not found"},
+                {
+                    "code": "CONSENT_NOT_FOUND",
+                    "message": "Consent not found",
+                    "detail": f"Consent {data['consent_id']} does not exist or does not belong to user {user_id}"
+                },
                 status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Validar consent antes de reconciliar
+        consent_service = get_consent_service()
+        if not consent_service.validate_consent(consent):
+            logger.warning(
+                f"Consent {consent.id} is not valid for reconciliation",
+                extra={'consent_id': consent.id, 'consent_status': consent.status}
+            )
+            return Response(
+                {
+                    "code": "INVALID_CONSENT",
+                    "message": f"Consent is {consent.status}",
+                    "detail": "Consent must be ACTIVE to reconcile payments"
+                },
+                status=status.HTTP_400_BAD_REQUEST
             )
         
         from .clients.open_finance import OpenFinanceClient
         of_client = OpenFinanceClient.from_env()
         
-        result = of_client.reconcile_payment(
-            consent_id=consent.consent_id,
-            account_id=data["account_id"],
-            expected_amount=str(data["expected_amount"]),
-            expected_txid=data.get("expected_txid")
-        )
-        
-        if not result:
-            return Response(
-                {"detail": "Payment not found in transactions"},
-                status=status.HTTP_404_NOT_FOUND
+        try:
+            result = of_client.reconcile_payment(
+                consent_id=consent.consent_id,
+                account_id=data["account_id"],
+                expected_amount=str(data["expected_amount"]),
+                expected_txid=data.get("expected_txid")
             )
-        
-        return Response(result)
+            
+            if not result:
+                logger.info(
+                    f"Payment not found in transactions",
+                    extra={
+                        'consent_id': consent.id,
+                        'account_id': data['account_id'],
+                        'expected_amount': str(data['expected_amount']),
+                        'expected_txid': data.get('expected_txid')
+                    }
+                )
+                return Response(
+                    {
+                        "code": "PAYMENT_NOT_FOUND",
+                        "message": "Payment not found in transactions",
+                        "detail": "The payment may not have been processed yet or account_id may be incorrect",
+                        "found": False
+                    },
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            logger.info(
+                f"Payment reconciled successfully",
+                extra={
+                    'consent_id': consent.id,
+                    'account_id': data['account_id'],
+                    'found': result.get('found', False),
+                    'matched_by': result.get('matched_by')
+                }
+            )
+            
+            return Response(result)
+            
+        except Exception as e:
+            logger.error(
+                f"Error reconciling payment: {str(e)}",
+                exc_info=True,
+                extra={
+                    'consent_id': consent.id,
+                    'account_id': data['account_id'],
+                    'expected_amount': str(data['expected_amount'])
+                }
+            )
+            return Response(
+                {
+                    "code": "RECONCILE_ERROR",
+                    "message": "Failed to reconcile payment",
+                    "detail": str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class RelayerStatusView(views.APIView):
