@@ -1,7 +1,15 @@
 # PayPi-Bridge - Análise e Plano de Ação
 
-**Data**: 2025-01-30  
-**Status**: Em desenvolvimento (Blueprint/Skeleton)
+**Documento original**: 2025-01-30 (análise detalhada abaixo = *corte histórico*)  
+**Última revisão do cabeçalho**: 2026-03-20  
+**Status atual do produto**: operacional no Railway; Fase 1 concluída; Fase 2 ~95% (falta validação com credenciais reais e Celery em produção)
+
+> **Onde está a verdade atual**  
+> Use estes ficheiros como fonte principal para estado, roadmap e próximos passos:
+> - [`docs/PLANO_EVOLUCAO.md`](docs/PLANO_EVOLUCAO.md)
+> - [`docs/FASE1_CONCLUSAO.md`](docs/FASE1_CONCLUSAO.md)
+> - [`docs/FASE2_RESUMO_FINAL.md`](docs/FASE2_RESUMO_FINAL.md)  
+> O corpo deste ficheiro (a partir de “Análise detalhada”) descreve sobretudo o projeto na época do blueprint; mantido como referência de decisões e riscos.
 
 ---
 
@@ -14,13 +22,12 @@
 Pi Wallet → Soroban Contract → CCIP/Relayer → Django Backend → Open Finance → Bancos
 ```
 
-### Estado Atual
-- ✅ **Backend Django/DRF**: Estrutura básica implementada
-- ✅ **Contratos Soroban**: Skeleton funcional
-- ✅ **Documentação**: Diagramas de arquitetura e sequência
-- ⚠️ **Open Finance**: Placeholder (não implementado)
-- ⚠️ **CCIP/Relayer**: Não implementado
-- ⚠️ **Integração Pi Network**: Não implementada
+### Estado Atual (resumo março 2026)
+- ✅ **Backend Django/DRF**: API completa (intents, Pi, webhooks, health/admin), JWT, rate limiting, testes e CI
+- ✅ **Pi / Soroban / FX**: `PiService`, relayer com RPC Soroban, `FXService`, Celery/Beat, circuit breaker no cliente Open Finance
+- ✅ **Documentação e devops**: README, `.env.example`, Docker, Railway, vários guias em `docs/`
+- ⚠️ **Open Finance “de rua”**: fluxo e stubs/cliente existem; **produção** exige mTLS, OAuth e sandbox/produção com banco
+- ⚠️ **Próximo foco operacional**: credenciais reais, E2E, workers Celery no Railway — ver [`docs/FASE2_RESUMO_FINAL.md`](docs/FASE2_RESUMO_FINAL.md)
 
 ---
 
@@ -409,6 +416,9 @@ pi.initialize(api_key, wallet_private_seed, "Pi Network")
 ## 📚 RECURSOS E REFERÊNCIAS
 
 ### Documentação
+- [Plano de evolução (estado atual)](docs/PLANO_EVOLUCAO.md)
+- [Fase 1 — conclusão](docs/FASE1_CONCLUSAO.md)
+- [Fase 2 — resumo final](docs/FASE2_RESUMO_FINAL.md)
 - [Pi Network SDK Python](../sdk/pi-python/README.md)
 - [Pi Platform Docs](../docs/pi-platform-docs/)
 - [Open Banking Brasil](https://www.bcb.gov.br/estabilidadefinanceira/openbanking)
@@ -419,5 +429,5 @@ pi.initialize(api_key, wallet_private_seed, "Pi Network")
 
 ---
 
-**Última atualização**: 2025-01-30  
-**Próxima revisão**: Após conclusão da Fase 1
+**Última atualização do rodapé**: 2026-03-20  
+**Próxima revisão**: Alinhar secção “Análise detalhada” ao código ou arquivar como histórico-only
