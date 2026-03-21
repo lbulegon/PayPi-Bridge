@@ -662,26 +662,26 @@ FORMS_HTML = """
             <nav class="forms-nav" aria-label="Funcionalidades">
                 <div class="nav-section">
                     <span class="nav-heading">Conta</span>
-                    <a href="#auth-login" data-panel="auth-login">Login</a>
-                    <a href="#auth-register" data-panel="auth-register">Registro</a>
-                    <a href="#auth-profile" data-panel="auth-profile">Meu perfil</a>
+                    <a href="/forms/#auth-login" data-panel="auth-login">Login</a>
+                    <a href="/forms/#auth-register" data-panel="auth-register">Registro</a>
+                    <a href="/forms/#auth-profile" data-panel="auth-profile">Meu perfil</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Pi</span>
-                    <a href="#pi-status" data-panel="pi-status">Status</a>
-                    <a href="#pi-balance" data-panel="pi-balance">Saldo</a>
+                    <a href="/forms/#pi-status" data-panel="pi-status">Status</a>
+                    <a href="/forms/#pi-balance" data-panel="pi-balance">Saldo</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Checkout</span>
-                    <a href="#checkout-intent" data-panel="checkout-intent">Payment intent</a>
+                    <a href="/forms/#checkout-intent" data-panel="checkout-intent">Payment intent</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Pagamentos</span>
-                    <a href="#section-verify" data-panel="section-verify">Verificar Pi</a>
+                    <a href="/forms/#section-verify" data-panel="section-verify">Verificar Pi</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Liquidação</span>
-                    <a href="#section-settle" data-panel="section-settle">Pi → Pix</a>
+                    <a href="/forms/#section-settle" data-panel="section-settle">Pi → Pix</a>
                 </div>
             </nav>
         </aside>
@@ -852,23 +852,36 @@ FORMS_HTML = """
             el.style.display = 'block';
         }
         var LEGACY_PANEL = { 'form-intent': 'checkout-intent' };
-        function normalizePanelId(id) {
-            return LEGACY_PANEL[id] || id;
+        function resolvePanelIdFromHashFragment(frag) {
+            var raw = (frag || '').replace(/^#/, '').trim();
+            try {
+                if (raw.indexOf('%') !== -1) raw = decodeURIComponent(raw);
+            } catch (e) { /* manter raw */ }
+            var id = LEGACY_PANEL[raw] || raw;
+            return id;
+        }
+        function panelIdFromWindowHash() {
+            return resolvePanelIdFromHashFragment(location.hash || '');
+        }
+        function validPanelOrLogin(id) {
+            if (!id) return 'auth-login';
+            var el = document.getElementById(id);
+            if (!el || !el.classList.contains('form-panel')) return 'auth-login';
+            return id;
         }
         function showPanel(panelId, opts) {
             opts = opts || {};
-            if (!panelId) return false;
-            var id = normalizePanelId(panelId);
-            var panels = document.querySelectorAll('.form-panel');
-            var found = false;
-            panels.forEach(function(p) {
-                var on = p.id === id;
-                if (on) found = true;
-                p.classList.toggle('is-active', on);
+            var id = resolvePanelIdFromHashFragment(panelId);
+            if (!id) id = 'auth-login';
+            id = validPanelOrLogin(id);
+            var target = document.getElementById(id);
+            if (!target) return false;
+            document.querySelectorAll('.form-panel').forEach(function(p) {
+                p.classList.toggle('is-active', p.id === id);
             });
-            if (!found) return false;
             document.querySelectorAll('.forms-nav a[data-panel]').forEach(function(a) {
-                a.classList.toggle('is-active', a.getAttribute('data-panel') === id);
+                var ap = a.getAttribute('data-panel');
+                a.classList.toggle('is-active', ap === id);
             });
             if (opts.updateHash !== false) {
                 if (history.replaceState) {
@@ -879,6 +892,10 @@ FORMS_HTML = """
             }
             return true;
         }
+        function applyHashToPanel() {
+            var id = validPanelOrLogin(panelIdFromWindowHash());
+            showPanel(id, { updateHash: false });
+        }
         function initFormsNav() {
             var links = document.querySelectorAll('.forms-nav a[data-panel]');
             links.forEach(function(a) {
@@ -888,20 +905,26 @@ FORMS_HTML = """
                 });
             });
             window.addEventListener('hashchange', function() {
-                var raw = location.hash.replace(/^#/, '');
-                if (!showPanel(raw, { updateHash: false })) {
-                    showPanel('auth-login', { updateHash: false });
-                }
+                applyHashToPanel();
             });
-            var raw = location.hash.replace(/^#/, '');
-            if (!showPanel(raw, { updateHash: false })) {
-                showPanel('auth-login', { updateHash: false });
-            }
+            window.addEventListener('pageshow', function(ev) {
+                if (ev.persisted) applyHashToPanel();
+            });
+            applyHashToPanel();
+            window.addEventListener('load', function() {
+                applyHashToPanel();
+            });
+            setTimeout(applyHashToPanel, 0);
+        }
+        function startFormsNavOnce() {
+            if (window.__paypiFormsNavStarted) return;
+            window.__paypiFormsNavStarted = true;
+            initFormsNav();
         }
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initFormsNav);
+            document.addEventListener('DOMContentLoaded', startFormsNavOnce);
         } else {
-            initFormsNav();
+            startFormsNavOnce();
         }
         document.getElementById('btn-status').onclick = function() {
             var el = document.getElementById('result-status');
