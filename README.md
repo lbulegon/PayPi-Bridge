@@ -152,6 +152,7 @@ python manage.py runserver
 ### Payouts
 
 - `POST /api/payouts/pix` - Criar pagamento Pix
+- `POST /api/settlements/execute` - Liquidação automática Pi→BRL→Pix (após verify + consent)
 
 ### Pi Network
 
@@ -190,6 +191,7 @@ coverage report
 
 - [Análise e Plano de Ação](./ANALISE_E_PLANO_ACAO.md) - Análise completa do projeto
 - [Payment Trust Engine](./docs/PAYMENT_TRUST_ENGINE.md) - Pi Platform + Horizon opcional
+- [Settlement Engine](./docs/SETTLEMENT_ENGINE.md) - Liquidação Pi → BRL → Pix
 - [Diagramas](./docs/) - Arquitetura e sequência
 - [OpenAPI](./openapi/openapi.yaml) - Especificação da API
 

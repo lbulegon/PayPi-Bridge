@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     IntentView, IntentListView, CCIPWebhookView, PixPayoutView,
+    SettlementExecuteView,
     VerifyPiPaymentView, PiBalanceView, PiStatusView,
     ConsentView, ConsentDetailView,
     LinkBankAccountView, ReconcilePaymentView,
@@ -56,6 +57,11 @@ urlpatterns = [
     
     # Payouts
     path("payouts/pix", PixPayoutView.as_view(), name="pix-payout"),
+    path(
+        "settlements/execute",
+        SettlementExecuteView.as_view(),
+        name="settlement-execute",
+    ),
     
     # Pi Network
     path("pi/status", PiStatusView.as_view(), name="pi-status"),

@@ -153,6 +153,18 @@ class PixPayoutSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
 
 
+class SettlementExecuteSerializer(serializers.Serializer):
+    """
+    Liquidação automática: amount_pi do intent → BRL (FX + taxa) → Pix.
+    Requer intent com Pi já verificado (verified_at) e consent ACTIVE do payee.
+    """
+
+    intent_id = serializers.CharField(max_length=120)
+    cpf = serializers.CharField(max_length=11)
+    pix_key = serializers.CharField(max_length=200)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+
+
 class CreateConsentSerializer(serializers.Serializer):
     provider = serializers.CharField(max_length=120)
     scopes = serializers.ListField(

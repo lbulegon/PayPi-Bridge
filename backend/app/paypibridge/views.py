@@ -21,10 +21,12 @@ logger = logging.getLogger(__name__)
 from .serializers import (
     CreateIntentSerializer, PaymentIntentSerializer,
     PixPayoutSerializer, VerifyPaymentSerializer,
+    SettlementExecuteSerializer,
     CreateConsentSerializer, ConsentSerializer,
     LinkBankAccountSerializer, ReconcilePaymentSerializer
 )
 from .clients.pix import PixClient
+from .services.settlement_service import SettlementService
 from .services.pi_service import get_pi_service
 from .services.payment_orchestrator import PaymentTrustOrchestrator, get_ledger_verifier
 from .services.consent_service import get_consent_service
@@ -334,6 +336,82 @@ class PixPayoutView(views.APIView):
             "txid": tx["txid"],
             "status": tx["status"]
         })
+
+
+class SettlementExecuteView(views.APIView):
+    """
+    Liquidação Pi → BRL → Pix após verificação Pi no intent.
+    Usa FXService (câmbio), SETTLEMENT_FEE_RATE (env) e Pix (mock ou Open Finance).
+    """
+
+    permission_classes = [AllowAny]
+
+    @method_decorator(ratelimit(key="ip", rate="20/m", method="POST"))
+    def dispatch(self, *args, **kwargs):
+        return super().dispatch(*args, **kwargs)
+
+    def post(self, request):
+        s = SettlementExecuteSerializer(data=request.data)
+        s.is_valid(raise_exception=True)
+        data = s.validated_data
+
+        try:
+            intent = PaymentIntent.objects.get(intent_id=data["intent_id"])
+        except PaymentIntent.DoesNotExist:
+            return Response(
+                {"detail": "PaymentIntent not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        consent = Consent.objects.filter(
+            user_id=intent.payee_user_id, status="ACTIVE"
+        ).first()
+        if not consent:
+            return Response(
+                {
+                    "detail": "no active consent for payee",
+                    "code": "CONSENT_REQUIRED",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        settlement = SettlementService().settle(
+            intent,
+            consent=consent,
+            cpf=data["cpf"],
+            pix_key=data["pix_key"],
+            description=data.get("description") or "",
+        )
+
+        if not settlement.success:
+            return Response(
+                {
+                    "detail": settlement.error or "settlement_failed",
+                    "gross_brl": str(settlement.gross_brl)
+                    if settlement.gross_brl is not None
+                    else None,
+                    "net_brl": str(settlement.net_brl)
+                    if settlement.net_brl is not None
+                    else None,
+                    "fee_brl": str(settlement.fee_brl)
+                    if settlement.fee_brl is not None
+                    else None,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "intent_id": intent.intent_id,
+                "status": intent.status,
+                "settlement_status": intent.settlement_status,
+                "gross_brl": str(settlement.gross_brl),
+                "net_brl": str(settlement.net_brl),
+                "fee_brl": str(settlement.fee_brl),
+                "pix_txid": settlement.pix_txid,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PiStatusView(views.APIView):
@@ -1234,7 +1312,16 @@ class AdminStatsView(views.APIView):
                     "provider": os.getenv('FX_PROVIDER', 'fixed'),
                     "available": True
                 }
-            }
+            },
+            "settlement": {
+                "settled_intents": PaymentIntent.objects.filter(status="SETTLED").count(),
+                "pending_liquidation": PaymentIntent.objects.filter(
+                    verified_at__isnull=False
+                ).exclude(status__in=("SETTLED", "CANCELLED")).count(),
+                "settlement_failed": PaymentIntent.objects.filter(
+                    settlement_status="SETTLEMENT_FAILED"
+                ).count(),
+            },
         }
         
         return Response(stats)
@@ -1253,6 +1340,14 @@ class AdminIntentsView(views.APIView):
         offset = int(request.query_params.get('offset', 0))
         
         queryset = PaymentIntent.objects.all().order_by('-created_at')
+
+        if request.query_params.get("mine") == "1":
+            if not getattr(request.user, "is_authenticated", False):
+                return Response(
+                    {"detail": "Authentication required for mine=1"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            queryset = queryset.filter(payee_user=request.user)
         
         if status_filter:
             queryset = queryset.filter(status=status_filter)

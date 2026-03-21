@@ -38,6 +38,15 @@ class PaymentIntent(models.Model):
     confidence_level = models.CharField(max_length=64, null=True, blank=True)
     ledger_checked = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
+    # Liquidação Pi → BRL → Pix (SettlementService)
+    settlement_status = models.CharField(max_length=32, null=True, blank=True)
+    settled_amount_brl = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True
+    )
+    settlement_fee_brl = models.DecimalField(
+        max_digits=20, decimal_places=2, null=True, blank=True
+    )
+    settlement_pix_txid = models.CharField(max_length=120, null=True, blank=True)
 
     def __str__(self):
         return self.intent_id

@@ -618,7 +618,7 @@ FORMS_HTML = """
             <div id="result-intent" class="result" style="display:none;"></div>
         </div>
 
-        <div class="card pi">
+        <div class="card pi" id="section-verify">
             <h2>Verificar pagamento Pi (POST /api/payments/verify)</h2>
             <form id="form-verify">
                 <div class="form-group">
@@ -629,9 +629,38 @@ FORMS_HTML = """
                     <label>intent_id</label>
                     <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
                 </div>
+                <div class="form-group">
+                    <label>txid (opcional, Horizon / ledger)</label>
+                    <input type="text" name="txid" placeholder="hash da transação on-chain">
+                </div>
                 <button type="submit" class="btn btn-pi">Verificar</button>
             </form>
             <div id="result-verify" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="card" id="section-settle" style="border-left: 3px solid #22c55e;">
+            <h2 style="color:#86efac;">Liquidação automática (POST /api/settlements/execute)</h2>
+            <p class="subtitle" style="color:#94a3b8;font-size:0.85rem;">Requer Pi já verificado no intent + consent Open Finance ativo do payee.</p>
+            <form id="form-settle">
+                <div class="form-group">
+                    <label>intent_id</label>
+                    <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
+                </div>
+                <div class="form-group">
+                    <label>CPF (só dígitos)</label>
+                    <input type="text" name="cpf" placeholder="12345678901" maxlength="11" required>
+                </div>
+                <div class="form-group">
+                    <label>Chave Pix</label>
+                    <input type="text" name="pix_key" placeholder="email, telefone ou chave" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição (opcional)</label>
+                    <input type="text" name="description" placeholder="PayPi-Bridge">
+                </div>
+                <button type="submit" class="btn" style="background:#22c55e;color:#0f172a;">Liquidar (Pi→BRL→Pix)</button>
+            </form>
+            <div id="result-settle" class="result" style="display:none;"></div>
         </div>
     </div>
     <script>
@@ -703,11 +732,42 @@ FORMS_HTML = """
             e.preventDefault();
             var el = document.getElementById('result-verify');
             var fd = new FormData(this);
-            var body = { payment_id: fd.get('payment_id'), intent_id: fd.get('intent_id') };
+            var body = {
+                payment_id: fd.get('payment_id'),
+                intent_id: fd.get('intent_id'),
+                txid: fd.get('txid') || ''
+            };
             el.style.display = 'block';
             el.textContent = 'Enviando...';
             var csrf = getCookie('csrftoken');
             fetch('/api/payments/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
+                body: JSON.stringify(body),
+                credentials: 'same-origin'
+            })
+                .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+                .then(function(arr) {
+                    var status = arr[0], j = arr[1];
+                    showResult(el, JSON.stringify(j, null, 2), status >= 200 && status < 300);
+                })
+                .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
+        };
+
+        document.getElementById('form-settle').onsubmit = function(e) {
+            e.preventDefault();
+            var el = document.getElementById('result-settle');
+            var fd = new FormData(this);
+            var body = {
+                intent_id: fd.get('intent_id'),
+                cpf: fd.get('cpf'),
+                pix_key: fd.get('pix_key'),
+                description: fd.get('description') || ''
+            };
+            el.style.display = 'block';
+            el.textContent = 'Liquidando...';
+            var csrf = getCookie('csrftoken');
+            fetch('/api/settlements/execute', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf || '' },
                 body: JSON.stringify(body),
@@ -1003,6 +1063,31 @@ DASHBOARD_HTML = """
             border-color: #38bdf8;
             transform: translateY(-2px);
         }
+        .services-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem 1.25rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+        .services-strip span strong { color: #e2e8f0; }
+        .intent-table-wrap { overflow-x: auto; margin-top: 1rem; }
+        .intent-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .intent-table th, .intent-table td {
+            padding: 0.5rem 0.6rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.4);
+        }
+        .intent-table th { color: #94a3b8; font-weight: 600; }
+        .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.7rem; }
+        .badge-settled { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+        .badge-created { background: rgba(56, 189, 248, 0.15); color: #7dd3fc; }
+        .badge-other { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
     </style>
 </head>
 <body>
@@ -1028,16 +1113,54 @@ DASHBOARD_HTML = """
                 <div class="stats-grid" id="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value" id="stat-intents">-</div>
-                        <div class="stat-label">Payment Intents</div>
+                        <div class="stat-label">Payment Intents (total)</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="stat-consents">-</div>
-                        <div class="stat-label">Consents</div>
+                        <div class="stat-label">Consents ativos</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-value" id="stat-payouts">-</div>
-                        <div class="stat-label">Payouts</div>
+                        <div class="stat-label">Transações Pix</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-settled">-</div>
+                        <div class="stat-label">Liquidações (SETTLED)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-pending-liq">-</div>
+                        <div class="stat-label">Pi verificado → aguarda Pix</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-liq-fail">-</div>
+                        <div class="stat-label">Falhas de liquidação</div>
+                    </div>
+                </div>
+                <div class="services-strip" id="services-strip">
+                    <span><strong>Pi:</strong> <span id="svc-pi">—</span></span>
+                    <span><strong>FX:</strong> <span id="svc-fx">—</span></span>
+                    <span><strong>Relayer:</strong> <span id="svc-relayer">—</span></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📋 Meus últimos Payment Intents</h2>
+                <p style="color:#94a3b8;font-size:0.85rem;margin:0 0 0.5rem 0;">Filtrados pelo teu utilizador (JWT).</p>
+                <div class="intent-table-wrap">
+                    <table class="intent-table">
+                        <thead>
+                            <tr>
+                                <th>intent_id</th>
+                                <th>Status</th>
+                                <th>Pi</th>
+                                <th>Liquidação</th>
+                                <th>Verificado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-intents-body">
+                            <tr><td colspan="5" style="color:#64748b;">A carregar…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1050,15 +1173,31 @@ DASHBOARD_HTML = """
                     </a>
                     <a href="/forms/#form-intent" class="action-btn">
                         <strong>💰 Criar Payment Intent</strong><br>
-                        <small>Criar novo intent de pagamento</small>
+                        <small>Checkout Pi → BRL</small>
+                    </a>
+                    <a href="/forms/#section-verify" class="action-btn">
+                        <strong>✓ Verificar pagamento Pi</strong><br>
+                        <small>Ligar payment_id ao intent</small>
+                    </a>
+                    <a href="/forms/#section-settle" class="action-btn">
+                        <strong>🏦 Liquidação Pix</strong><br>
+                        <small>Pi verificado → BRL → Pix</small>
                     </a>
                     <a href="/forms/#auth-register" class="action-btn">
                         <strong>🔐 Gerenciar Conta</strong><br>
-                        <small>Alterar senha e configurações</small>
+                        <small>Registo / senha</small>
                     </a>
-                    <a href="/api/schema/swagger-ui/" class="action-btn">
+                    <a href="/api/schema/swagger-ui/" target="_blank" rel="noopener" class="action-btn">
                         <strong>📚 API Docs</strong><br>
-                        <small>Documentação da API</small>
+                        <small>Swagger / OpenAPI</small>
+                    </a>
+                    <a href="/health/bridge" target="_blank" rel="noopener" class="action-btn">
+                        <strong>❤️ Health / Trust</strong><br>
+                        <small>Pi + Horizon (modo confiança)</small>
+                    </a>
+                    <a href="/api/health" target="_blank" rel="noopener" class="action-btn">
+                        <strong>🔧 Health completo</strong><br>
+                        <small>Serviços e integrações</small>
                     </a>
                 </div>
             </div>
@@ -1087,6 +1226,66 @@ DASHBOARD_HTML = """
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             window.location.href = '/login/';
+        }
+
+        function loadDashboardStats(token) {
+            fetch('/api/admin/stats', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) { return r.json().then(function(j) { return [r.status, j]; }); })
+            .then(function(arr) {
+                var st = arr[0], s = arr[1];
+                if (st < 200 || st >= 300 || !s.payment_intents) return;
+                document.getElementById('stat-intents').textContent = s.payment_intents.total;
+                document.getElementById('stat-consents').textContent = (s.consents.active != null ? s.consents.active : s.consents.total);
+                document.getElementById('stat-payouts').textContent = s.pix_transactions.total;
+                var setl = s.settlement || {};
+                document.getElementById('stat-settled').textContent = setl.settled_intents != null ? setl.settled_intents : '0';
+                document.getElementById('stat-pending-liq').textContent = setl.pending_liquidation != null ? setl.pending_liquidation : '0';
+                document.getElementById('stat-liq-fail').textContent = setl.settlement_failed != null ? setl.settlement_failed : '0';
+                var sv = s.services || {};
+                document.getElementById('svc-pi').textContent = sv.pi_network && sv.pi_network.available ? 'OK' : 'indisponível';
+                document.getElementById('svc-fx').textContent = (sv.fx_service && sv.fx_service.provider) ? sv.fx_service.provider : '—';
+                var rs = sv.soroban_relayer || {};
+                document.getElementById('svc-relayer').textContent = rs.enabled ? (rs.connected ? 'ligado' : 'configurado') : 'off';
+            })
+            .catch(function() {});
+        }
+
+        function intentStatusBadge(st) {
+            if (st === 'SETTLED') return '<span class="badge badge-settled">' + st + '</span>';
+            if (st === 'CREATED' || st === 'CONFIRMED') return '<span class="badge badge-created">' + st + '</span>';
+            return '<span class="badge badge-other">' + (st || '-') + '</span>';
+        }
+
+        function loadRecentIntents(token) {
+            var tbody = document.getElementById('recent-intents-body');
+            fetch('/api/admin/intents?limit=8&mine=1', {
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var rows = data.results || [];
+                if (!rows.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="color:#64748b;">Nenhum intent ainda. Cria um em Formulários.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = rows.map(function(it) {
+                    var ver = it.verified_at ? 'sim' : '—';
+                    var liq = it.settlement_status || (it.status === 'SETTLED' ? 'SETTLED' : '—');
+                    return '<tr><td style="font-family:monospace;font-size:0.75rem;">' + (it.intent_id || '') + '</td><td>' +
+                        intentStatusBadge(it.status) + '</td><td>' + (it.amount_pi || '-') + '</td><td>' + liq + '</td><td>' + ver + '</td></tr>';
+                }).join('');
+            })
+            .catch(function() {
+                tbody.innerHTML = '<tr><td colspan="5" style="color:#f87171;">Não foi possível carregar intents.</td></tr>';
+            });
         }
 
         function loadUserProfile() {
@@ -1125,10 +1324,8 @@ DASHBOARD_HTML = """
                     '<div class="info-item"><div class="info-label">Nome</div><div class="info-value">' + (user.first_name || '-') + ' ' + (user.last_name || '') + '</div></div>' +
                     '<div class="info-item"><div class="info-label">ID</div><div class="info-value">' + (user.id || '-') + '</div></div>';
 
-                // Carregar estatísticas (placeholder por enquanto)
-                document.getElementById('stat-intents').textContent = '-';
-                document.getElementById('stat-consents').textContent = '-';
-                document.getElementById('stat-payouts').textContent = '-';
+                loadDashboardStats(token);
+                loadRecentIntents(token);
             })
             .catch(function(e) {
                 document.getElementById('loading').style.display = 'none';
@@ -1146,11 +1343,6 @@ DASHBOARD_HTML = """
 </body>
 </html>
 """
-
-
-@ensure_csrf_cookie
-def dashboard_view(request):
-    return HttpResponse(DASHBOARD_HTML)
 
 
 LOGIN_HTML = """
