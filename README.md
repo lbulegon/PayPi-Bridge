@@ -34,7 +34,7 @@ PayPi-Bridge/
 │   │           └── pi_service.py  # Integração Pi Network
 │   ├── tests/                 # Testes
 │   ├── requirements.txt       # Dependências Python (backend)
-│   └── Dockerfile            # Container Docker
+│   └── Dockerfile            # Opcional — só para quem usa containers
 ├── contracts/                 # Contratos Soroban
 │   └── soroban/
 │       └── paypi_bridge.rs   # Contrato principal
@@ -50,7 +50,7 @@ PayPi-Bridge/
 │   └── openapi.yaml
 ├── postman/                   # Coleção Postman
 ├── requirements.txt          # Dependências Python (raiz - usado pelo Railway)
-├── docker-compose.yml        # Orquestração Docker
+├── docker-compose.yml        # Opcional — compose de referência (não é o fluxo principal)
 └── .env.example              # Variáveis de ambiente (template)
 ```
 
@@ -68,75 +68,54 @@ Isso garante que ambas as dependências estejam sincronizadas. Veja [docs/REQUIR
 
 ```
 
-## 🚀 Quickstart
+## 🚀 Quickstart (sem Docker)
+
+O fluxo principal é **Python + PostgreSQL + Redis** na tua máquina (ou BD/Redis geridos na cloud, ex. Railway). Não é obrigatório usar Docker.
 
 ### Pré-requisitos
 
-- Docker e Docker Compose
-- Python 3.11+ (para desenvolvimento local)
-- PostgreSQL 15+
-- Redis (para cache e Celery)
+- Python 3.11+
+- PostgreSQL 15+ (local ou URL remota)
+- Redis (local em `127.0.0.1:6379` ou URL remota — usado pelo Celery para a fila de liquidação)
 
-### 1. Configurar Ambiente
+### 1. Configurar ambiente
 
 ```bash
-# Copiar variáveis de ambiente
 cp .env.example .env
-
-# Editar .env com suas credenciais
-# - PI_API_KEY
-# - PI_WALLET_PRIVATE_SEED
-# - DB_PASSWORD
-# - CCIP_WEBHOOK_SECRET
-# - Open Finance credentials
+# Editar .env: DATABASE_URL ou DB_*, PI_*, CELERY_BROKER_URL, etc.
 ```
 
-### 2. Iniciar com Docker
-
-O backend PayPi-Bridge sobe na **porta 9080** (evita conflito com Core_sinapUm e outros na 8000/8001).
+### 2. Backend local
 
 ```bash
-# Iniciar todos os serviços
-docker-compose up -d
+python3 -m venv .venv
+source .venv/bin/activate   # Linux/macOS
+# .venv\Scripts\activate    # Windows
 
-# Ver logs
-docker-compose logs -f backend
-
-# API: http://localhost:9080/api/ | Health: http://localhost:9080/health/
-
-# Parar serviços
-docker-compose down
-```
-
-### 3. Desenvolvimento Local
-
-```bash
-# Criar ambiente virtual
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# ou
-venv\Scripts\activate  # Windows
-
-# Instalar dependências
 pip install -r backend/requirements.txt
+python scripts/sync_requirements.py   # alinha requirements.txt da raiz (Railway)
 
-# Subir só DB e Redis (opcional)
-docker-compose up -d db redis
-
-# Variáveis: copiar .env.example para .env e preencher DB_* e PI_* se quiser Pi Network
-
-# Rodar migrações (a partir da pasta backend)
 cd backend
 python manage.py migrate
-
-# Criar superusuário (opcional)
-python manage.py createsuperuser
-
-# Rodar servidor de desenvolvimento
 python manage.py runserver
 ```
 
-**Nota:** A integração com Pi Network usa o SDK em `PiNetwork/sdk/pi-python`. Para funcionar em desenvolvimento local, o repositório deve estar em uma pasta que contenha `PiNetwork` (ex.: `.../PiNetwork/projects/PayPi-Bridge`). No Docker, o SDK não é copiado por padrão; a API responde normalmente e o endpoint `/api/pi/balance` retorna 503 se o Pi não estiver configurado.
+### 3. Liquidação assíncrona (Celery)
+
+Com `SETTLEMENT_ASYNC=1` (padrão), abre **outro terminal** com o mesmo venv:
+
+```bash
+cd backend
+celery -A config worker -l info
+```
+
+Garante que o Redis da `CELERY_BROKER_URL` está a correr. Sem Redis: define `CELERY_TASK_ALWAYS_EAGER=1` ou `SETTLEMENT_ASYNC=0` (liquidação síncrona). Detalhes: [docs/SETTLEMENT_QUEUE.md](docs/SETTLEMENT_QUEUE.md).
+
+### Opcional: Docker Compose
+
+Existe `docker-compose.yml` apenas para quem **quiser** subir Postgres/Redis/backend em containers; podes ignorar por completo se já tens BD e Redis noutro sítio.
+
+**Pi Network:** o SDK pode exigir o repo noutro caminho (ex. pasta `PiNetwork`). Sem credenciais `PI_*`, a API responde mas `/api/pi/balance` pode devolver 503.
 
 ## 📡 API Endpoints
 
@@ -192,6 +171,7 @@ coverage report
 - [Análise e Plano de Ação](./ANALISE_E_PLANO_ACAO.md) - Análise completa do projeto
 - [Payment Trust Engine](./docs/PAYMENT_TRUST_ENGINE.md) - Pi Platform + Horizon opcional
 - [Settlement Engine](./docs/SETTLEMENT_ENGINE.md) - Liquidação Pi → BRL → Pix
+- [Fila Celery — liquidação](./docs/SETTLEMENT_QUEUE.md) - 202 Accepted, worker, Redis, dead letter
 - [Diagramas](./docs/) - Arquitetura e sequência
 - [OpenAPI](./openapi/openapi.yaml) - Especificação da API
 
@@ -225,7 +205,7 @@ Contratos inteligentes para:
 - **Banco de Dados**: PostgreSQL
 - **Cache/Fila**: Redis / Celery
 - **Blockchain**: Soroban (Stellar)
-- **Containerização**: Docker / Docker Compose
+- **Containerização**: opcional (Docker Compose de referência)
 - **Documentação**: drf-spectacular (OpenAPI)
 
 ## 📋 Status do Projeto
@@ -238,7 +218,7 @@ Contratos inteligentes para:
 - Integração Pi Network SDK
 - Contratos Soroban (skeleton)
 - Testes básicos
-- Docker Compose para desenvolvimento
+- Quickstart local (Postgres + Redis + Celery); Docker Compose só como referência opcional
 
 ### ⚠️ Em Desenvolvimento
 

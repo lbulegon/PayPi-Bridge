@@ -2,6 +2,7 @@
 Django settings for PayPi-Bridge backend.
 """
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -82,6 +83,9 @@ INSTALLED_APPS = [
     # Seus apps
     "app.paypibridge",
 ]
+
+if os.getenv("CELERY_RESULT_BACKEND", "").strip() == "django-db":
+    INSTALLED_APPS.append("django_celery_results")
 
 # IMPORTANTÍSSIMO: não remova os finders padrão
 STATICFILES_FINDERS = [
@@ -211,7 +215,7 @@ USE_TZ = True
 
 # ========== CELERY CONFIGURATION ==========
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0").strip()
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -219,6 +223,21 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25 minutes
+CELERY_TASK_ACKS_LATE = os.getenv("CELERY_TASK_ACKS_LATE", "1").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+CELERY_WORKER_PREFETCH_MULTIPLIER = int(
+    os.getenv("CELERY_WORKER_PREFETCH_MULTIPLIER", "1")
+)
+# Em `manage.py test` executa tasks na mesma thread (sem Redis obrigatório).
+CELERY_TASK_ALWAYS_EAGER = os.getenv(
+    "CELERY_TASK_ALWAYS_EAGER", ""
+).lower() in ("1", "true", "yes") or (len(sys.argv) > 1 and sys.argv[1] == "test")
+CELERY_TASK_EAGER_PROPAGATES = True
+# Liquidação via fila (POST /api/settlements/execute → 202); 0 força caminho síncrono.
+SETTLEMENT_ASYNC = os.getenv("SETTLEMENT_ASYNC", "1").lower() in ("1", "true", "yes")
 CELERY_BEAT_SCHEDULE = {
     "monitor-soroban-events": {
         "task": "app.paypibridge.tasks.monitor_soroban_events",

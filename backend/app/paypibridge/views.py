@@ -27,6 +27,7 @@ from .serializers import (
 )
 from .clients.pix import PixClient
 from .services.settlement_service import SettlementService
+from .tasks import process_settlement_execute
 from .services.pi_service import get_pi_service
 from .services.payment_orchestrator import PaymentTrustOrchestrator, get_ledger_verifier
 from .services.consent_service import get_consent_service
@@ -338,10 +339,52 @@ class PixPayoutView(views.APIView):
         })
 
 
+def _settlement_http_from_task(intent: PaymentIntent, payload: dict) -> Response:
+    """Converte retorno da task Celery em resposta DRF (modo eager ou inspeção)."""
+    st = payload.get("status")
+    if st == "success":
+        intent.refresh_from_db()
+        return Response(
+            {
+                "intent_id": intent.intent_id,
+                "status": intent.status,
+                "settlement_status": intent.settlement_status,
+                "gross_brl": payload.get("gross_brl"),
+                "net_brl": payload.get("net_brl"),
+                "fee_brl": payload.get("fee_brl"),
+                "pix_txid": payload.get("pix_txid"),
+            },
+            status=status.HTTP_200_OK,
+        )
+    if st == "already_settled":
+        intent.refresh_from_db()
+        return Response(
+            {
+                "intent_id": intent.intent_id,
+                "status": intent.status,
+                "settlement_status": intent.settlement_status,
+                "detail": "already_settled",
+            },
+            status=status.HTTP_200_OK,
+        )
+    body = {
+        "detail": payload.get("detail")
+        or payload.get("code")
+        or "settlement_failed",
+        "gross_brl": payload.get("gross_brl"),
+        "net_brl": payload.get("net_brl"),
+        "fee_brl": payload.get("fee_brl"),
+    }
+    if st == "dead_letter":
+        body["code"] = "SETTLEMENT_DEAD_LETTER"
+    return Response(body, status=status.HTTP_400_BAD_REQUEST)
+
+
 class SettlementExecuteView(views.APIView):
     """
     Liquidação Pi → BRL → Pix após verificação Pi no intent.
     Usa FXService (câmbio), SETTLEMENT_FEE_RATE (env) e Pix (mock ou Open Finance).
+    Com SETTLEMENT_ASYNC=1 a liquidação corre na fila Celery (202 Accepted).
     """
 
     permission_classes = [AllowAny]
@@ -375,42 +418,62 @@ class SettlementExecuteView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        settlement = SettlementService().settle(
-            intent,
-            consent=consent,
-            cpf=data["cpf"],
-            pix_key=data["pix_key"],
-            description=data.get("description") or "",
-        )
-
-        if not settlement.success:
+        if not getattr(settings, "SETTLEMENT_ASYNC", True):
+            settlement = SettlementService().settle(
+                intent,
+                consent=consent,
+                cpf=data["cpf"],
+                pix_key=data["pix_key"],
+                description=data.get("description") or "",
+            )
+            if not settlement.success:
+                return Response(
+                    {
+                        "detail": settlement.error or "settlement_failed",
+                        "gross_brl": str(settlement.gross_brl)
+                        if settlement.gross_brl is not None
+                        else None,
+                        "net_brl": str(settlement.net_brl)
+                        if settlement.net_brl is not None
+                        else None,
+                        "fee_brl": str(settlement.fee_brl)
+                        if settlement.fee_brl is not None
+                        else None,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             return Response(
                 {
-                    "detail": settlement.error or "settlement_failed",
-                    "gross_brl": str(settlement.gross_brl)
-                    if settlement.gross_brl is not None
-                    else None,
-                    "net_brl": str(settlement.net_brl)
-                    if settlement.net_brl is not None
-                    else None,
-                    "fee_brl": str(settlement.fee_brl)
-                    if settlement.fee_brl is not None
-                    else None,
+                    "intent_id": intent.intent_id,
+                    "status": intent.status,
+                    "settlement_status": intent.settlement_status,
+                    "gross_brl": str(settlement.gross_brl),
+                    "net_brl": str(settlement.net_brl),
+                    "fee_brl": str(settlement.fee_brl),
+                    "pix_txid": settlement.pix_txid,
                 },
-                status=status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_200_OK,
             )
+
+        ar = process_settlement_execute.delay(
+            intent.intent_id,
+            consent.id,
+            data["cpf"],
+            data["pix_key"],
+            data.get("description") or "",
+        )
+        if getattr(settings, "CELERY_TASK_ALWAYS_EAGER", False):
+            payload = ar.get()
+            return _settlement_http_from_task(intent, payload)
 
         return Response(
             {
+                "accepted": True,
+                "task_id": str(ar.id),
                 "intent_id": intent.intent_id,
-                "status": intent.status,
-                "settlement_status": intent.settlement_status,
-                "gross_brl": str(settlement.gross_brl),
-                "net_brl": str(settlement.net_brl),
-                "fee_brl": str(settlement.fee_brl),
-                "pix_txid": settlement.pix_txid,
+                "detail": "Liquidação enfileirada; o worker Celery atualiza o PaymentIntent.",
             },
-            status=status.HTTP_200_OK,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 

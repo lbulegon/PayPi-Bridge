@@ -9,17 +9,153 @@ Tasks for:
 """
 
 import logging
-from celery import shared_task
-from django.utils import timezone
-from decimal import Decimal
 
-from .models import PaymentIntent, PixTransaction, WebhookEvent
+from celery import shared_task
+from celery.exceptions import MaxRetriesExceededError
+from decimal import Decimal
+from django.db import transaction
+from django.utils import timezone
+
+from .models import Consent, PaymentIntent, PixTransaction, WebhookEvent
+from .services.settlement_service import SettlementService
 from .services.pi_service import get_pi_service
 from .services.fx_service import get_fx_service
 from .services.relayer import get_relayer
 from .clients.pix import PixClient
 
 logger = logging.getLogger(__name__)
+
+
+def _mark_settlement_dead_letter(intent_id: str, error: str) -> None:
+    intent = PaymentIntent.objects.filter(intent_id=intent_id).first()
+    if not intent:
+        return
+    intent.metadata = {
+        **intent.metadata,
+        "settlement_dead_letter": True,
+        "settlement_dead_letter_error": (error or "")[:500],
+    }
+    intent.settlement_status = "SETTLEMENT_FAILED"
+    intent.save(update_fields=["metadata", "settlement_status"])
+
+
+@shared_task(bind=True, max_retries=3)
+def process_settlement_execute(
+    self,
+    intent_id: str,
+    consent_id: int,
+    cpf: str,
+    pix_key: str,
+    description: str = "",
+):
+    """
+    Liquidação Pi → BRL → Pix fora da request HTTP.
+    Usa select_for_update no intent para reduzir corrida entre workers.
+    Erros transitórios: retry; após esgotar retries: dead letter no metadata.
+    """
+    logger.info(
+        "settlement_task_start",
+        extra={
+            "intent_id": intent_id,
+            "consent_id": consent_id,
+            "retries": self.request.retries,
+        },
+    )
+    try:
+        with transaction.atomic():
+            try:
+                intent = PaymentIntent.objects.select_for_update().get(
+                    intent_id=intent_id
+                )
+            except PaymentIntent.DoesNotExist:
+                return {
+                    "status": "error",
+                    "code": "intent_not_found",
+                    "detail": "PaymentIntent not found",
+                }
+
+            if intent.status == "SETTLED" or intent.settlement_status == "SETTLED":
+                return {
+                    "status": "already_settled",
+                    "intent_id": intent.intent_id,
+                }
+
+            if not intent.verified_at:
+                return {
+                    "status": "not_ready",
+                    "code": "pi_payment_not_verified",
+                    "detail": "pi_payment_not_verified",
+                }
+
+        consent = Consent.objects.filter(pk=consent_id, status="ACTIVE").first()
+        if not consent:
+            return {
+                "status": "error",
+                "code": "consent_not_found",
+                "detail": "no active consent for payee",
+            }
+
+        intent = PaymentIntent.objects.get(intent_id=intent_id)
+        settlement = SettlementService().settle(
+            intent,
+            consent=consent,
+            cpf=cpf,
+            pix_key=pix_key,
+            description=description or "",
+        )
+
+        if not settlement.success:
+            return {
+                "status": "error",
+                "code": settlement.error or "settlement_failed",
+                "detail": settlement.error or "settlement_failed",
+                "gross_brl": str(settlement.gross_brl)
+                if settlement.gross_brl is not None
+                else None,
+                "net_brl": str(settlement.net_brl)
+                if settlement.net_brl is not None
+                else None,
+                "fee_brl": str(settlement.fee_brl)
+                if settlement.fee_brl is not None
+                else None,
+            }
+
+        return {
+            "status": "success",
+            "intent_id": intent.intent_id,
+            "gross_brl": str(settlement.gross_brl),
+            "net_brl": str(settlement.net_brl),
+            "fee_brl": str(settlement.fee_brl),
+            "pix_txid": settlement.pix_txid,
+        }
+
+    except Exception as exc:
+        logger.warning(
+            "settlement_task_retry",
+            exc_info=True,
+            extra={
+                "intent_id": intent_id,
+                "consent_id": consent_id,
+                "retries": self.request.retries,
+            },
+        )
+        try:
+            raise self.retry(
+                exc=exc,
+                countdown=min(300, 10 * (2 ** self.request.retries)),
+            )
+        except MaxRetriesExceededError:
+            logger.error(
+                "settlement_task_dead_letter",
+                extra={"intent_id": intent_id, "error": str(exc)},
+                exc_info=True,
+            )
+            _mark_settlement_dead_letter(intent_id, str(exc))
+            return {
+                "status": "dead_letter",
+                "code": "max_retries",
+                "detail": str(exc),
+            }
 
 
 @shared_task(bind=True, max_retries=3)
@@ -155,7 +291,6 @@ def process_pix_payout(self, intent_id: str, consent_id: int):
             return {'status': 'skipped', 'reason': 'not_confirmed'}
         
         # Get consent
-        from .models import Consent
         try:
             consent = Consent.objects.get(id=consent_id, status='ACTIVE')
         except Consent.DoesNotExist:
