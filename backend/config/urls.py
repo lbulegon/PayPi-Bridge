@@ -453,22 +453,147 @@ FORMS_HTML = """
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
-            padding: 2rem;
+            padding: 0;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             min-height: 100vh;
             color: #e2e8f0;
         }
-        .container { max-width: 700px; margin: 0 auto; }
-        h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
-        .subtitle { color: #94a3b8; margin-bottom: 1.5rem; font-size: 0.9rem; }
-        .back { color: #FF9800; text-decoration: none; margin-bottom: 1.5rem; display: inline-block; }
+        .forms-shell {
+            display: grid;
+            grid-template-columns: minmax(200px, 260px) 1fr;
+            gap: 0;
+            max-width: 1080px;
+            margin: 0 auto;
+            min-height: 100vh;
+            padding: 1.25rem 1.25rem 2.5rem;
+            align-items: start;
+        }
+        @media (max-width: 820px) {
+            .forms-shell {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+        }
+        .forms-sidebar {
+            position: sticky;
+            top: 1rem;
+            padding-right: 1rem;
+            border-right: 1px solid rgba(71, 85, 105, 0.45);
+        }
+        @media (max-width: 820px) {
+            .forms-sidebar {
+                position: static;
+                border-right: none;
+                border-bottom: 1px solid rgba(71, 85, 105, 0.45);
+                padding-right: 0;
+                padding-bottom: 1rem;
+                margin-bottom: 1rem;
+            }
+        }
+        .sidebar-title {
+            font-size: 1.35rem;
+            margin: 0.35rem 0 0.2rem 0;
+            font-weight: 700;
+        }
+        .sidebar-desc {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin: 0 0 1rem 0;
+            line-height: 1.4;
+        }
+        .back {
+            color: #FF9800;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
         .back:hover { color: #FFB74D; text-decoration: underline; }
+        .forms-nav { display: flex; flex-direction: column; gap: 1rem; }
+        .nav-section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+        .nav-heading {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            font-weight: 700;
+            margin: 0;
+        }
+        .forms-nav a {
+            display: block;
+            padding: 0.45rem 0.65rem;
+            border-radius: 8px;
+            color: #cbd5e1;
+            text-decoration: none;
+            font-size: 0.875rem;
+            border: 1px solid transparent;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .forms-nav a:hover {
+            background: rgba(51, 65, 85, 0.5);
+            color: #f1f5f9;
+        }
+        .forms-nav a.is-active {
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.35);
+            color: #7dd3fc;
+        }
+        @media (max-width: 820px) {
+            .forms-nav {
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 0.35rem 0.5rem;
+            }
+            .nav-section {
+                flex-direction: row;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 0.25rem;
+                width: 100%;
+            }
+            .nav-heading {
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+            .nav-section:first-child .nav-heading { margin-top: 0; }
+            .forms-nav a { padding: 0.35rem 0.55rem; font-size: 0.8rem; }
+        }
+        .forms-main {
+            padding-left: 1.5rem;
+            min-width: 0;
+        }
+        @media (max-width: 820px) {
+            .forms-main { padding-left: 0; }
+        }
+        .form-panel { display: none; }
+        .form-panel.is-active { display: block; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .panel-blurb {
+            color: #94a3b8;
+            font-size: 0.88rem;
+            margin: 0 0 1rem 0;
+            line-height: 1.45;
+        }
+        .panel-blurb code {
+            background: rgba(15, 23, 42, 0.9);
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #7dd3fc;
+        }
+        h1.page-fallback { display: none; }
         .card {
-            background: rgba(30, 41, 59, 0.8);
+            background: rgba(30, 41, 59, 0.85);
             border: 1px solid rgba(71, 85, 105, 0.5);
             border-radius: 12px;
             padding: 1.25rem 1.5rem;
-            margin-bottom: 1.25rem;
         }
         .card h2 {
             font-size: 0.95rem;
@@ -510,6 +635,8 @@ FORMS_HTML = """
         .btn-pi:hover { background: #FFB74D; }
         .card.pi { border-left: 3px solid #FF9800; }
         .card.pi h2 { color: #FFB74D; }
+        .card.auth { border-left: 3px solid #22c55e; }
+        .card.auth h2 { color: #86efac; }
         .result {
             margin-top: 1rem;
             padding: 0.75rem;
@@ -519,7 +646,7 @@ FORMS_HTML = """
             font-size: 0.8rem;
             white-space: pre-wrap;
             word-break: break-all;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
         }
         .result.ok { border-left: 3px solid #22c55e; }
@@ -527,141 +654,192 @@ FORMS_HTML = """
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/" class="back">← Voltar</a>
-        <h1>Formulários de teste</h1>
-        <p class="subtitle">Consultas à API PayPi-Bridge</p>
+    <div class="forms-shell">
+        <aside class="forms-sidebar">
+            <a href="/" class="back">← Voltar</a>
+            <h1 class="sidebar-title">Formulários</h1>
+            <p class="sidebar-desc">Um painel por funcionalidade. Use o menu para alternar.</p>
+            <nav class="forms-nav" aria-label="Funcionalidades">
+                <div class="nav-section">
+                    <span class="nav-heading">Conta</span>
+                    <a href="#auth-login" data-panel="auth-login">Login</a>
+                    <a href="#auth-register" data-panel="auth-register">Registro</a>
+                    <a href="#auth-profile" data-panel="auth-profile">Meu perfil</a>
+                </div>
+                <div class="nav-section">
+                    <span class="nav-heading">Pi</span>
+                    <a href="#pi-status" data-panel="pi-status">Status</a>
+                    <a href="#pi-balance" data-panel="pi-balance">Saldo</a>
+                </div>
+                <div class="nav-section">
+                    <span class="nav-heading">Checkout</span>
+                    <a href="#checkout-intent" data-panel="checkout-intent">Payment intent</a>
+                </div>
+                <div class="nav-section">
+                    <span class="nav-heading">Pagamentos</span>
+                    <a href="#section-verify" data-panel="section-verify">Verificar Pi</a>
+                </div>
+                <div class="nav-section">
+                    <span class="nav-heading">Liquidação</span>
+                    <a href="#section-settle" data-panel="section-settle">Pi → Pix</a>
+                </div>
+            </nav>
+        </aside>
+        <main class="forms-main">
+            <div id="auth-login" class="form-panel is-active">
+                <p class="panel-blurb">Autenticação e tokens JWT; após sucesso redireciona ao dashboard. Endpoint: <code>POST /api/auth/login</code></p>
+                <div class="card auth">
+                    <h2>Login</h2>
+                    <form id="form-login">
+                        <div class="form-group">
+                            <label>Username ou Email</label>
+                            <input type="text" name="username" placeholder="usuario123 ou usuario@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha</label>
+                            <input type="password" name="password" placeholder="Sua senha" required>
+                        </div>
+                        <button type="submit" class="btn" style="background: #22c55e;">Fazer Login</button>
+                    </form>
+                    <div id="result-login" class="result" style="display:none;"></div>
+                </div>
+            </div>
 
-        <div class="card" id="auth-login" style="border-left: 3px solid #22c55e;">
-            <h2 style="color: #22c55e;">🔐 Login (POST /api/auth/login)</h2>
-            <form id="form-login">
-                <div class="form-group">
-                    <label>Username ou Email</label>
-                    <input type="text" name="username" placeholder="usuario123 ou usuario@example.com" required>
+            <div id="auth-register" class="form-panel">
+                <p class="panel-blurb">Cria utilizador e devolve tokens. Endpoint: <code>POST /api/auth/register</code></p>
+                <div class="card auth">
+                    <h2>Registro</h2>
+                    <form id="form-register">
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" name="username" placeholder="usuario123" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" placeholder="usuario@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha</label>
+                            <input type="password" name="password" placeholder="Senha forte" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Confirmar Senha</label>
+                            <input type="password" name="password_confirm" placeholder="Confirme a senha" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome (opcional)</label>
+                            <input type="text" name="first_name" placeholder="João">
+                        </div>
+                        <div class="form-group">
+                            <label>Sobrenome (opcional)</label>
+                            <input type="text" name="last_name" placeholder="Silva">
+                        </div>
+                        <button type="submit" class="btn" style="background: #22c55e;">Criar Conta</button>
+                    </form>
+                    <div id="result-register" class="result" style="display:none;"></div>
                 </div>
-                <div class="form-group">
-                    <label>Senha</label>
-                    <input type="password" name="password" placeholder="Sua senha" required>
-                </div>
-                <button type="submit" class="btn" style="background: #22c55e;">Fazer Login</button>
-            </form>
-            <div id="result-login" class="result" style="display:none;"></div>
-        </div>
+            </div>
 
-        <div class="card" id="auth-register" style="border-left: 3px solid #22c55e;">
-            <h2 style="color: #22c55e;">📝 Registro (POST /api/auth/register)</h2>
-            <form id="form-register">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" placeholder="usuario123" required>
+            <div id="auth-profile" class="form-panel">
+                <p class="panel-blurb">Requer token no armazenamento local (após login). Endpoint: <code>GET /api/auth/me</code></p>
+                <div class="card auth">
+                    <h2>Meu perfil</h2>
+                    <button type="button" class="btn" id="btn-profile" style="background: #22c55e;">Carregar Perfil</button>
+                    <div id="result-profile" class="result" style="display:none;"></div>
                 </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="email" placeholder="usuario@example.com" required>
-                </div>
-                <div class="form-group">
-                    <label>Senha</label>
-                    <input type="password" name="password" placeholder="Senha forte" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirmar Senha</label>
-                    <input type="password" name="password_confirm" placeholder="Confirme a senha" required>
-                </div>
-                <div class="form-group">
-                    <label>Nome (opcional)</label>
-                    <input type="text" name="first_name" placeholder="João">
-                </div>
-                <div class="form-group">
-                    <label>Sobrenome (opcional)</label>
-                    <input type="text" name="last_name" placeholder="Silva">
-                </div>
-                <button type="submit" class="btn" style="background: #22c55e;">Criar Conta</button>
-            </form>
-            <div id="result-register" class="result" style="display:none;"></div>
-        </div>
+            </div>
 
-        <div class="card" id="auth-profile" style="border-left: 3px solid #22c55e;">
-            <h2 style="color: #22c55e;">👤 Meu Perfil (GET /api/auth/me)</h2>
-            <button type="button" class="btn" id="btn-profile" style="background: #22c55e;">Carregar Perfil</button>
-            <div id="result-profile" class="result" style="display:none;"></div>
-        </div>
+            <div id="pi-status" class="form-panel">
+                <p class="panel-blurb">Estado do nó / serviço Pi integrado ao bridge. Endpoint: <code>GET /api/pi/status</code></p>
+                <div class="card pi">
+                    <h2>Status Pi</h2>
+                    <button type="button" class="btn btn-pi" id="btn-status">Consultar status</button>
+                    <div id="result-status" class="result" style="display:none;"></div>
+                </div>
+            </div>
 
-        <div class="card pi">
-            <h2>Status Pi (GET /api/pi/status)</h2>
-            <button type="button" class="btn btn-pi" id="btn-status">Consultar status</button>
-            <div id="result-status" class="result" style="display:none;"></div>
-        </div>
+            <div id="pi-balance" class="form-panel">
+                <p class="panel-blurb">Consulta de saldo Pi. Endpoint: <code>GET /api/pi/balance</code></p>
+                <div class="card pi">
+                    <h2>Saldo Pi</h2>
+                    <button type="button" class="btn btn-pi" id="btn-balance">Consultar saldo</button>
+                    <div id="result-balance" class="result" style="display:none;"></div>
+                </div>
+            </div>
 
-        <div class="card pi">
-            <h2>Saldo Pi (GET /api/pi/balance)</h2>
-            <button type="button" class="btn btn-pi" id="btn-balance">Consultar saldo</button>
-            <div id="result-balance" class="result" style="display:none;"></div>
-        </div>
+            <div id="checkout-intent" class="form-panel">
+                <p class="panel-blurb">Inicia um pagamento em Pi para um payee. Endpoint: <code>POST /api/checkout/pi-intent</code></p>
+                <div class="card">
+                    <h2>Criar PaymentIntent</h2>
+                    <form id="form-intent">
+                        <div class="form-group">
+                            <label>payee_user_id</label>
+                            <input type="number" name="payee_user_id" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>amount_pi</label>
+                            <input type="text" name="amount_pi" value="10.5" placeholder="ex: 10.5" required>
+                        </div>
+                        <div class="form-group">
+                            <label>metadata (JSON, opcional)</label>
+                            <textarea name="metadata" placeholder='{"order_id": "123"}'>{"order_id": ""}</textarea>
+                        </div>
+                        <button type="submit" class="btn">Criar intent</button>
+                    </form>
+                    <div id="result-intent" class="result" style="display:none;"></div>
+                </div>
+            </div>
 
-        <div class="card">
-            <h2>Criar PaymentIntent (POST /api/checkout/pi-intent)</h2>
-            <form id="form-intent">
-                <div class="form-group">
-                    <label>payee_user_id</label>
-                    <input type="number" name="payee_user_id" value="1" required>
+            <div id="section-verify" class="form-panel">
+                <p class="panel-blurb">Confirma pagamento Pi no intent (opcionalmente com txid no ledger). Endpoint: <code>POST /api/payments/verify</code></p>
+                <div class="card pi">
+                    <h2>Verificar pagamento Pi</h2>
+                    <form id="form-verify">
+                        <div class="form-group">
+                            <label>payment_id</label>
+                            <input type="text" name="payment_id" placeholder="ID do pagamento Pi" required>
+                        </div>
+                        <div class="form-group">
+                            <label>intent_id</label>
+                            <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
+                        </div>
+                        <div class="form-group">
+                            <label>txid (opcional, Horizon / ledger)</label>
+                            <input type="text" name="txid" placeholder="hash da transação on-chain">
+                        </div>
+                        <button type="submit" class="btn btn-pi">Verificar</button>
+                    </form>
+                    <div id="result-verify" class="result" style="display:none;"></div>
                 </div>
-                <div class="form-group">
-                    <label>amount_pi</label>
-                    <input type="text" name="amount_pi" value="10.5" placeholder="ex: 10.5" required>
-                </div>
-                <div class="form-group">
-                    <label>metadata (JSON, opcional)</label>
-                    <textarea name="metadata" placeholder='{"order_id": "123"}'>{"order_id": ""}</textarea>
-                </div>
-                <button type="submit" class="btn">Criar intent</button>
-            </form>
-            <div id="result-intent" class="result" style="display:none;"></div>
-        </div>
+            </div>
 
-        <div class="card pi" id="section-verify">
-            <h2>Verificar pagamento Pi (POST /api/payments/verify)</h2>
-            <form id="form-verify">
-                <div class="form-group">
-                    <label>payment_id</label>
-                    <input type="text" name="payment_id" placeholder="ID do pagamento Pi" required>
+            <div id="section-settle" class="form-panel">
+                <p class="panel-blurb">Liquidação Pi → BRL → Pix. Requer Pi verificado e consent Open Finance do payee. Endpoint: <code>POST /api/settlements/execute</code></p>
+                <div class="card auth">
+                    <h2>Liquidação automática</h2>
+                    <form id="form-settle">
+                        <div class="form-group">
+                            <label>intent_id</label>
+                            <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
+                        </div>
+                        <div class="form-group">
+                            <label>CPF (só dígitos)</label>
+                            <input type="text" name="cpf" placeholder="12345678901" maxlength="11" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Chave Pix</label>
+                            <input type="text" name="pix_key" placeholder="email, telefone ou chave" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Descrição (opcional)</label>
+                            <input type="text" name="description" placeholder="PayPi-Bridge">
+                        </div>
+                        <button type="submit" class="btn" style="background:#22c55e;color:#0f172a;">Liquidar (Pi→BRL→Pix)</button>
+                    </form>
+                    <div id="result-settle" class="result" style="display:none;"></div>
                 </div>
-                <div class="form-group">
-                    <label>intent_id</label>
-                    <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
-                </div>
-                <div class="form-group">
-                    <label>txid (opcional, Horizon / ledger)</label>
-                    <input type="text" name="txid" placeholder="hash da transação on-chain">
-                </div>
-                <button type="submit" class="btn btn-pi">Verificar</button>
-            </form>
-            <div id="result-verify" class="result" style="display:none;"></div>
-        </div>
-
-        <div class="card" id="section-settle" style="border-left: 3px solid #22c55e;">
-            <h2 style="color:#86efac;">Liquidação automática (POST /api/settlements/execute)</h2>
-            <p class="subtitle" style="color:#94a3b8;font-size:0.85rem;">Requer Pi já verificado no intent + consent Open Finance ativo do payee.</p>
-            <form id="form-settle">
-                <div class="form-group">
-                    <label>intent_id</label>
-                    <input type="text" name="intent_id" placeholder="ex: pi_1234567890" required>
-                </div>
-                <div class="form-group">
-                    <label>CPF (só dígitos)</label>
-                    <input type="text" name="cpf" placeholder="12345678901" maxlength="11" required>
-                </div>
-                <div class="form-group">
-                    <label>Chave Pix</label>
-                    <input type="text" name="pix_key" placeholder="email, telefone ou chave" required>
-                </div>
-                <div class="form-group">
-                    <label>Descrição (opcional)</label>
-                    <input type="text" name="description" placeholder="PayPi-Bridge">
-                </div>
-                <button type="submit" class="btn" style="background:#22c55e;color:#0f172a;">Liquidar (Pi→BRL→Pix)</button>
-            </form>
-            <div id="result-settle" class="result" style="display:none;"></div>
-        </div>
+            </div>
+        </main>
     </div>
     <script>
         function getCookie(name) {
@@ -672,6 +850,58 @@ FORMS_HTML = """
             el.textContent = text;
             el.className = 'result ' + (isOk ? 'ok' : 'err');
             el.style.display = 'block';
+        }
+        var LEGACY_PANEL = { 'form-intent': 'checkout-intent' };
+        function normalizePanelId(id) {
+            return LEGACY_PANEL[id] || id;
+        }
+        function showPanel(panelId, opts) {
+            opts = opts || {};
+            if (!panelId) return false;
+            var id = normalizePanelId(panelId);
+            var panels = document.querySelectorAll('.form-panel');
+            var found = false;
+            panels.forEach(function(p) {
+                var on = p.id === id;
+                if (on) found = true;
+                p.classList.toggle('is-active', on);
+            });
+            if (!found) return false;
+            document.querySelectorAll('.forms-nav a[data-panel]').forEach(function(a) {
+                a.classList.toggle('is-active', a.getAttribute('data-panel') === id);
+            });
+            if (opts.updateHash !== false) {
+                if (history.replaceState) {
+                    history.replaceState(null, '', '#' + id);
+                } else {
+                    location.hash = id;
+                }
+            }
+            return true;
+        }
+        function initFormsNav() {
+            var links = document.querySelectorAll('.forms-nav a[data-panel]');
+            links.forEach(function(a) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showPanel(a.getAttribute('data-panel'));
+                });
+            });
+            window.addEventListener('hashchange', function() {
+                var raw = location.hash.replace(/^#/, '');
+                if (!showPanel(raw, { updateHash: false })) {
+                    showPanel('auth-login', { updateHash: false });
+                }
+            });
+            var raw = location.hash.replace(/^#/, '');
+            if (!showPanel(raw, { updateHash: false })) {
+                showPanel('auth-login', { updateHash: false });
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initFormsNav);
+        } else {
+            initFormsNav();
         }
         document.getElementById('btn-status').onclick = function() {
             var el = document.getElementById('result-status');
@@ -753,7 +983,6 @@ FORMS_HTML = """
                 })
                 .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
         };
-
         document.getElementById('form-settle').onsubmit = function(e) {
             e.preventDefault();
             var el = document.getElementById('result-settle');
@@ -780,8 +1009,6 @@ FORMS_HTML = """
                 })
                 .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
         };
-
-        // Login form handler
         document.getElementById('form-login').onsubmit = function(e) {
             e.preventDefault();
             var el = document.getElementById('result-login');
@@ -802,7 +1029,6 @@ FORMS_HTML = """
                 .then(function(arr) {
                     var status = arr[0], j = arr[1];
                     if (status === 200 && j.tokens) {
-                        // Salvar tokens no localStorage
                         localStorage.setItem('access_token', j.tokens.access);
                         localStorage.setItem('refresh_token', j.tokens.refresh);
                         showResult(el, 'Login realizado com sucesso! Redirecionando...', true);
@@ -814,8 +1040,6 @@ FORMS_HTML = """
                 })
                 .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
         };
-
-        // Register form handler
         document.getElementById('form-register').onsubmit = function(e) {
             e.preventDefault();
             var el = document.getElementById('result-register');
@@ -843,11 +1067,9 @@ FORMS_HTML = """
                 .then(function(arr) {
                     var status = arr[0], j = arr[1];
                     if (status === 201 && j.tokens) {
-                        // Salvar tokens no localStorage
                         localStorage.setItem('access_token', j.tokens.access);
                         localStorage.setItem('refresh_token', j.tokens.refresh);
                         showResult(el, 'Conta criada com sucesso! Redirecionando...', true);
-                        // Redirecionar para página inicial (dashboard) após 1 segundo
                         setTimeout(function() {
                             window.location.href = '/';
                         }, 1000);
@@ -857,8 +1079,6 @@ FORMS_HTML = """
                 })
                 .catch(function(e) { showResult(el, 'Erro: ' + e.message, false); });
         };
-
-        // Profile button handler
         document.getElementById('btn-profile').onclick = function() {
             var el = document.getElementById('result-profile');
             var token = localStorage.getItem('access_token');
@@ -1171,7 +1391,7 @@ DASHBOARD_HTML = """
                         <strong>👤 Meu Perfil</strong><br>
                         <small>Ver e editar perfil</small>
                     </a>
-                    <a href="/forms/#form-intent" class="action-btn">
+                    <a href="/forms/#checkout-intent" class="action-btn">
                         <strong>💰 Criar Payment Intent</strong><br>
                         <small>Checkout Pi → BRL</small>
                     </a>
