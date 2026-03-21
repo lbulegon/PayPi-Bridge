@@ -155,7 +155,10 @@ python manage.py runserver
 
 ### Pi Network
 
+- `GET /api/pi/status` - Diagnóstico da integração Pi (env + SDK)
 - `GET /api/pi/balance` - Obter saldo Pi da carteira do app
+- `GET /api/payments/ledger/<txid>` - Auditoria da transação no Horizon (se configurado)
+- `GET /health/bridge` - Saúde resumida (Pi API + Horizon / modo de confiança)
 
 ## 🔐 Segurança
 
@@ -186,6 +189,7 @@ coverage report
 ## 📚 Documentação
 
 - [Análise e Plano de Ação](./ANALISE_E_PLANO_ACAO.md) - Análise completa do projeto
+- [Payment Trust Engine](./docs/PAYMENT_TRUST_ENGINE.md) - Pi Platform + Horizon opcional
 - [Diagramas](./docs/) - Arquitetura e sequência
 - [OpenAPI](./openapi/openapi.yaml) - Especificação da API
 

@@ -7,6 +7,8 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 
+from app.paypibridge.views import BridgeHealthView
+
 
 def health_view(request):
     return JsonResponse({"status": "ok"})
@@ -1666,6 +1668,7 @@ def register_view(request):
 urlpatterns = [
     path("", home_view),
     path("health/", health_view),
+    path("health/bridge", BridgeHealthView.as_view(), name="health-bridge"),
     path("forms/", forms_view),
     path("dashboard/", dashboard_view, name="dashboard"),
     path("login/", login_view, name="login"),

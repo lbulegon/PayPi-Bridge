@@ -8,11 +8,13 @@
 
 O PayPi-Bridge agora suporta configuração de banco de dados via `DATABASE_URL` (padrão Railway) ou variáveis individuais.
 
-### URL do Banco de Dados Railway
+### Formato da URL (exemplo com placeholders)
 
 ```
-postgresql://postgres:RlUYVitFqMTkdDimdUYhyAZeCktXctPB@interchange.proxy.rlwy.net:45625/railway
+postgresql://USER:PASSWORD@HOST:PORT/DATABASE
 ```
+
+Copia o valor real do painel Railway (**Postgres → Connect →** `DATABASE_URL` ou variáveis públicas). **Não commits** a URL completa.
 
 ---
 
@@ -23,7 +25,7 @@ postgresql://postgres:RlUYVitFqMTkdDimdUYhyAZeCktXctPB@interchange.proxy.rlwy.ne
 No Railway, configure a variável de ambiente:
 
 ```bash
-DATABASE_URL=postgresql://postgres:RlUYVitFqMTkdDimdUYhyAZeCktXctPB@interchange.proxy.rlwy.net:45625/railway
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR_PROXY.rlwy.net:PORT/railway
 ```
 
 O Django irá automaticamente:
@@ -37,11 +39,11 @@ O Django irá automaticamente:
 Alternativamente, você pode configurar:
 
 ```bash
-DB_HOST=interchange.proxy.rlwy.net
-DB_PORT=45625
+DB_HOST=YOUR_PROXY.rlwy.net
+DB_PORT=PORT
 DB_NAME=railway
 DB_USER=postgres
-DB_PASSWORD=RlUYVitFqMTkdDimdUYhyAZeCktXctPB
+DB_PASSWORD=YOUR_PASSWORD
 ```
 
 ---

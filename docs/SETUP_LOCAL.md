@@ -32,8 +32,8 @@ pip3 install -r requirements.txt
 Certifique-se de que o arquivo `.env` está configurado na raiz do projeto:
 
 ```bash
-# O arquivo .env já deve conter:
-DATABASE_URL=postgresql://postgres:RlUYVitFqMTkdDimdUYhyAZeCktXctPB@interchange.proxy.rlwy.net:45625/railway
+# No .env (não commitar): copiar DATABASE_URL do painel Railway → Postgres → Connect
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/railway
 ```
 
 ### 3. Executar Migrations

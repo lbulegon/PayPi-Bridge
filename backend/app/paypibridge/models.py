@@ -34,6 +34,10 @@ class PaymentIntent(models.Model):
     status = models.CharField(max_length=16, choices=STATUS, default="CREATED")
     metadata = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now)
+    # Trust engine (Pi Platform + opcional Horizon)
+    confidence_level = models.CharField(max_length=64, null=True, blank=True)
+    ledger_checked = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.intent_id

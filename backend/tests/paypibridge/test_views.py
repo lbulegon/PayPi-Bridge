@@ -153,7 +153,9 @@ class VerifyPiPaymentViewTest(TestCase):
             'status': {'cancelled': False, 'user_cancelled': False, 'transaction_verified': True},
             'transaction': {'txid': 'tx123'},
         }
-        with patch('app.paypibridge.views.get_pi_service') as m:
+        with patch('app.paypibridge.views.get_ledger_verifier', return_value=None), patch(
+            'app.paypibridge.views.get_pi_service'
+        ) as m:
             m.return_value.is_available.return_value = True
             m.return_value.verify_payment.return_value = mock_payment
             url = reverse('verify-payment')

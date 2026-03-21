@@ -359,6 +359,16 @@ PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_WALLET_PRIVATE_SEED = os.getenv("PI_WALLET_PRIVATE_SEED", "")
 PI_NETWORK = os.getenv("PI_NETWORK", "Pi Testnet")
 
+# Ledger (Horizon) — cruzamento opcional de txid; URL deve ser do Horizon do ledger Pi alvo
+ENABLE_LEDGER_VERIFICATION = (
+    os.getenv("ENABLE_LEDGER_VERIFICATION", "false").lower() == "true"
+)
+HORIZON_URL = os.getenv("HORIZON_URL", "").strip().rstrip("/")
+LEDGER_VERIFY_TIMEOUT = int(os.getenv("LEDGER_VERIFY_TIMEOUT", "10"))
+STRICT_LEDGER_AMOUNT_MATCH = (
+    os.getenv("STRICT_LEDGER_AMOUNT_MATCH", "false").lower() == "true"
+)
+
 # CCIP / Webhooks
 CCIP_WEBHOOK_SECRET = os.getenv("CCIP_WEBHOOK_SECRET", "")
 

@@ -134,6 +134,9 @@ class CreateIntentSerializer(serializers.Serializer):
 class VerifyPaymentSerializer(serializers.Serializer):
     payment_id = serializers.CharField(max_length=120)
     intent_id = serializers.CharField(max_length=120)
+    txid = serializers.CharField(
+        max_length=128, required=False, allow_blank=True, default=""
+    )
 
 
 class PaymentIntentSerializer(serializers.ModelSerializer):

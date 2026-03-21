@@ -41,8 +41,9 @@ db.sqlite3-journal
 .env.local
 .env.*.local
 
-# IDE
-.vscode/
+# IDE (mantemos settings.json do projeto para terminal/cópia)
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo

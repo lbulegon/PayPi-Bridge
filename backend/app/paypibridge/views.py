@@ -2,6 +2,10 @@ import os
 import hmac
 import hashlib
 import logging
+import time
+
+import requests
+from django.conf import settings
 from rest_framework import status, views
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -22,6 +26,7 @@ from .serializers import (
 )
 from .clients.pix import PixClient
 from .services.pi_service import get_pi_service
+from .services.payment_orchestrator import PaymentTrustOrchestrator, get_ledger_verifier
 from .services.consent_service import get_consent_service
 from .services.fx_service import get_fx_service
 from .services.relayer import get_relayer
@@ -142,23 +147,58 @@ class VerifyPiPaymentView(views.APIView):
                 status=status.HTTP_202_ACCEPTED
             )
         
-        # Update PaymentIntent with Pi payment info
+        # Update PaymentIntent with Pi payment info + trust engine (opcional Horizon)
         try:
             intent = PaymentIntent.objects.get(intent_id=intent_id)
+            txid_override = (data.get("txid") or "").strip()
+            orchestrator = PaymentTrustOrchestrator(
+                pi_service,
+                get_ledger_verifier(),
+            )
+            trust = orchestrator.evaluate_platform_verified(
+                payment=payment,
+                payment_id=payment_id,
+                intent_amount_pi=intent.amount_pi,
+                txid=txid_override or None,
+                strict_amount_match=settings.STRICT_LEDGER_AMOUNT_MATCH,
+            )
+            if trust["status"] == "failed":
+                return Response(
+                    {
+                        "detail": trust.get("reason", "verification_failed"),
+                        **{
+                            k: v
+                            for k, v in trust.items()
+                            if k not in ("status", "reason") and v is not None
+                        },
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            txid_final = trust.get("txid") or (
+                payment.get("transaction") or {}
+            ).get("txid", "")
             intent.payer_address = payment.get("from_address", "")
             intent.metadata = {
                 **intent.metadata,
                 "pi_payment_id": payment_id,
-                "pi_txid": payment.get("transaction", {}).get("txid", ""),
-                "pi_verified": True
+                "pi_txid": txid_final,
+                "pi_verified": True,
+                "confidence_level": trust["confidence_level"],
+                "ledger_checked": trust["ledger_checked"],
             }
+            intent.confidence_level = trust["confidence_level"]
+            intent.ledger_checked = trust["ledger_checked"]
+            intent.verified_at = timezone.now()
             intent.save()
-            
+
             return Response({
                 "intent_id": intent.intent_id,
                 "payment_id": payment_id,
                 "verified": True,
-                "txid": payment.get("transaction", {}).get("txid", "")
+                "txid": txid_final,
+                "confidence_level": trust["confidence_level"],
+                "ledger_checked": trust["ledger_checked"],
             })
         except PaymentIntent.DoesNotExist:
             return Response(
@@ -863,6 +903,71 @@ class PiNetworkWebhookView(views.APIView):
         )
         
         return Response({"ok": True, "received": True})
+
+
+class LedgerTransactionAuditView(views.APIView):
+    """
+    Auditoria read-only: consulta uma transação no Horizon configurado (sem passar pela Pi API).
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, txid):
+        verifier = get_ledger_verifier()
+        if not verifier:
+            return Response(
+                {
+                    "detail": "Ledger verification disabled or HORIZON_URL not set",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        result = verifier.verify_transaction(txid)
+        return Response(verifier.to_dict(result))
+
+
+class BridgeHealthView(views.APIView):
+    """
+    Saúde resumida do trust path: Pi API + Horizon (latência aproximada).
+    GET /health/bridge (montado em config.urls).
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        t0 = time.perf_counter()
+        pi_service = get_pi_service()
+        pi_api = "ok" if pi_service.is_available() else "down"
+
+        ledger = "skipped"
+        if getattr(settings, "ENABLE_LEDGER_VERIFICATION", False):
+            base = (getattr(settings, "HORIZON_URL", None) or "").strip().rstrip("/")
+            if not base:
+                ledger = "misconfigured"
+            else:
+                try:
+                    r = requests.get(f"{base}/", timeout=5)
+                    ledger = "ok" if r.status_code < 500 else "degraded"
+                except requests.RequestException:
+                    ledger = "down"
+        else:
+            ledger = "skipped"
+
+        latency_ms = int((time.perf_counter() - t0) * 1000)
+        confidence_mode = (
+            "hybrid"
+            if getattr(settings, "ENABLE_LEDGER_VERIFICATION", False)
+            and (getattr(settings, "HORIZON_URL", None) or "").strip()
+            else "platform_only"
+        )
+
+        return Response(
+            {
+                "pi_api": pi_api,
+                "ledger": ledger,
+                "latency_ms": latency_ms,
+                "confidence_mode": confidence_mode,
+            }
+        )
 
 
 class HealthCheckView(views.APIView):

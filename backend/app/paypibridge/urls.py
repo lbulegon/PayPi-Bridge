@@ -6,7 +6,8 @@ from .views import (
     LinkBankAccountView, ReconcilePaymentView,
     FXQuoteView, RelayerStatusView,
     PiNetworkWebhookView, HealthCheckView, TestEndpointsView,
-    AdminStatsView, AdminIntentsView
+    AdminStatsView, AdminIntentsView,
+    LedgerTransactionAuditView,
 )
 from .auth_views import (
     RegisterView,
@@ -32,6 +33,11 @@ urlpatterns = [
     path("checkout/pi-intent", IntentView.as_view(), name="create-intent"),
     path("intents", IntentListView.as_view(), name="list-intents"),
     path("payments/verify", VerifyPiPaymentView.as_view(), name="verify-payment"),
+    path(
+        "payments/ledger/<str:txid>",
+        LedgerTransactionAuditView.as_view(),
+        name="ledger-transaction-audit",
+    ),
     
     # Webhooks
     path("webhooks/ccip", CCIPWebhookView.as_view(), name="ccip-webhook"),

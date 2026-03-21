@@ -46,9 +46,11 @@ class PaymentFlowIntegrationTest(TestCase):
             status="ACTIVE"
         )
     
+    @patch('app.paypibridge.views.get_ledger_verifier')
     @patch('app.paypibridge.services.pi_service.get_pi_service')
-    def test_complete_payment_flow(self, mock_get_pi_service):
+    def test_complete_payment_flow(self, mock_get_pi_service, mock_get_ledger_verifier):
         """Test complete flow from intent creation to payout."""
+        mock_get_ledger_verifier.return_value = None
         # Mock Pi Service
         mock_pi_service = MagicMock()
         mock_pi_service.is_available.return_value = True
@@ -92,6 +94,9 @@ class PaymentFlowIntegrationTest(TestCase):
         intent.refresh_from_db()
         self.assertIsNotNone(intent.payer_address)
         self.assertIn('pi_payment_id', intent.metadata)
+        self.assertEqual(intent.confidence_level, 'medium_trust')
+        self.assertFalse(intent.ledger_checked)
+        self.assertIsNotNone(intent.verified_at)
         
         # Step 3: CCIP Webhook - Confirm delivery
         secret = "test-secret"
