@@ -662,26 +662,26 @@ FORMS_HTML = """
             <nav class="forms-nav" aria-label="Funcionalidades">
                 <div class="nav-section">
                     <span class="nav-heading">Conta</span>
-                    <a href="/forms/#auth-login" data-panel="auth-login">Login</a>
-                    <a href="/forms/#auth-register" data-panel="auth-register">Registro</a>
-                    <a href="/forms/#auth-profile" data-panel="auth-profile">Meu perfil</a>
+                    <a href="/forms/?panel=auth-login" data-panel="auth-login">Login</a>
+                    <a href="/forms/?panel=auth-register" data-panel="auth-register">Registro</a>
+                    <a href="/forms/?panel=auth-profile" data-panel="auth-profile">Meu perfil</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Pi</span>
-                    <a href="/forms/#pi-status" data-panel="pi-status">Status</a>
-                    <a href="/forms/#pi-balance" data-panel="pi-balance">Saldo</a>
+                    <a href="/forms/?panel=pi-status" data-panel="pi-status">Status</a>
+                    <a href="/forms/?panel=pi-balance" data-panel="pi-balance">Saldo</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Checkout</span>
-                    <a href="/forms/#checkout-intent" data-panel="checkout-intent">Payment intent</a>
+                    <a href="/forms/?panel=checkout-intent" data-panel="checkout-intent">Payment intent</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Pagamentos</span>
-                    <a href="/forms/#section-verify" data-panel="section-verify">Verificar Pi</a>
+                    <a href="/forms/?panel=section-verify" data-panel="section-verify">Verificar Pi</a>
                 </div>
                 <div class="nav-section">
                     <span class="nav-heading">Liquidação</span>
-                    <a href="/forms/#section-settle" data-panel="section-settle">Pi → Pix</a>
+                    <a href="/forms/?panel=section-settle" data-panel="section-settle">Pi → Pix</a>
                 </div>
             </nav>
         </aside>
@@ -1138,7 +1138,30 @@ FORMS_HTML = """
 
 @ensure_csrf_cookie
 def forms_view(request):
-    return HttpResponse(FORMS_HTML)
+    # Seleciona o painel inicial via query param (robusto mesmo se JS falhar).
+    panel = (request.GET.get("panel") or "").strip()
+    allowed_panels = {
+        "auth-login",
+        "auth-register",
+        "auth-profile",
+        "pi-status",
+        "pi-balance",
+        "checkout-intent",
+        "section-verify",
+        "section-settle",
+    }
+    if panel not in allowed_panels:
+        panel = "auth-login"
+
+    html = FORMS_HTML
+    # Remove qualquer painel ativo do template e ativa apenas o painel selecionado.
+    html = html.replace('class="form-panel is-active"', 'class="form-panel"')
+    active_tag = f'<div id="{panel}" class="form-panel">'
+    active_tag_repl = f'<div id="{panel}" class="form-panel is-active">'
+    if active_tag in html:
+        html = html.replace(active_tag, active_tag_repl, 1)
+
+    return HttpResponse(html)
 
 
 DASHBOARD_HTML = """
@@ -1410,23 +1433,23 @@ DASHBOARD_HTML = """
             <div class="card">
                 <h2>⚡ Ações Rápidas</h2>
                 <div class="quick-actions">
-                    <a href="/forms/#auth-profile" class="action-btn">
+                    <a href="/forms/?panel=auth-profile" class="action-btn">
                         <strong>👤 Meu Perfil</strong><br>
                         <small>Ver e editar perfil</small>
                     </a>
-                    <a href="/forms/#checkout-intent" class="action-btn">
+                    <a href="/forms/?panel=checkout-intent" class="action-btn">
                         <strong>💰 Criar Payment Intent</strong><br>
                         <small>Checkout Pi → BRL</small>
                     </a>
-                    <a href="/forms/#section-verify" class="action-btn">
+                    <a href="/forms/?panel=section-verify" class="action-btn">
                         <strong>✓ Verificar pagamento Pi</strong><br>
                         <small>Ligar payment_id ao intent</small>
                     </a>
-                    <a href="/forms/#section-settle" class="action-btn">
+                    <a href="/forms/?panel=section-settle" class="action-btn">
                         <strong>🏦 Liquidação Pix</strong><br>
                         <small>Pi verificado → BRL → Pix</small>
                     </a>
-                    <a href="/forms/#auth-register" class="action-btn">
+                    <a href="/forms/?panel=auth-register" class="action-btn">
                         <strong>🔐 Gerenciar Conta</strong><br>
                         <small>Registo / senha</small>
                     </a>
