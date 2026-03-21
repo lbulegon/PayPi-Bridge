@@ -33,8 +33,7 @@ PayPi-Bridge/
 │   │       └── services/      # Serviços de negócio
 │   │           └── pi_service.py  # Integração Pi Network
 │   ├── tests/                 # Testes
-│   ├── requirements.txt       # Dependências Python (backend)
-│   └── Dockerfile            # Opcional — só para quem usa containers
+│   └── requirements.txt       # Dependências Python (backend)
 ├── contracts/                 # Contratos Soroban
 │   └── soroban/
 │       └── paypi_bridge.rs   # Contrato principal
@@ -50,7 +49,6 @@ PayPi-Bridge/
 │   └── openapi.yaml
 ├── postman/                   # Coleção Postman
 ├── requirements.txt          # Dependências Python (raiz - usado pelo Railway)
-├── docker-compose.yml        # Opcional — compose de referência (não é o fluxo principal)
 └── .env.example              # Variáveis de ambiente (template)
 ```
 
@@ -110,10 +108,6 @@ celery -A config worker -l info
 ```
 
 Garante que o Redis da `CELERY_BROKER_URL` está a correr. Sem Redis: define `CELERY_TASK_ALWAYS_EAGER=1` ou `SETTLEMENT_ASYNC=0` (liquidação síncrona). Detalhes: [docs/SETTLEMENT_QUEUE.md](docs/SETTLEMENT_QUEUE.md).
-
-### Opcional: Docker Compose
-
-Existe `docker-compose.yml` apenas para quem **quiser** subir Postgres/Redis/backend em containers; podes ignorar por completo se já tens BD e Redis noutro sítio.
 
 **Pi Network:** o SDK pode exigir o repo noutro caminho (ex. pasta `PiNetwork`). Sem credenciais `PI_*`, a API responde mas `/api/pi/balance` pode devolver 503.
 
@@ -205,7 +199,6 @@ Contratos inteligentes para:
 - **Banco de Dados**: PostgreSQL
 - **Cache/Fila**: Redis / Celery
 - **Blockchain**: Soroban (Stellar)
-- **Containerização**: opcional (Docker Compose de referência)
 - **Documentação**: drf-spectacular (OpenAPI)
 
 ## 📋 Status do Projeto
@@ -218,7 +211,7 @@ Contratos inteligentes para:
 - Integração Pi Network SDK
 - Contratos Soroban (skeleton)
 - Testes básicos
-- Quickstart local (Postgres + Redis + Celery); Docker Compose só como referência opcional
+- Quickstart local (Postgres + Redis + Celery)
 
 ### ⚠️ Em Desenvolvimento
 

@@ -156,9 +156,9 @@ backend/app/bridge/
 - ✅ Indexes otimizados
 - ✅ Admin Django configurado
 
-### J) Docker e Execução Local ✅
+### J) Execução local ✅
 
-- ✅ Usa `docker-compose.yml` existente
+- ✅ Quickstart sem containers (`README.md`, `docs/DEVELOPMENT.md`)
 - ✅ Usa PostgreSQL existente
 - ✅ README com comandos de uso
 - ✅ Exemplos de curl incluídos
@@ -265,7 +265,7 @@ Documentação disponível em:
 
 ## ✅ Critérios de Aceite
 
-- ✅ Subir com docker-compose e acessar `/docs`
+- ✅ `runserver` local e aceder a `/docs`
 - ✅ Criar flow e ver eventos
 - ✅ Idempotency-Key funciona
 - ✅ Webhook assinado é emitido

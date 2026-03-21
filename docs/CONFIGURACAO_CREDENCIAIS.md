@@ -216,10 +216,9 @@ FX_CACHE_TIMEOUT=300
 O Celery precisa de Redis como broker e result backend.
 
 ```bash
-# Redis já configurado no docker-compose.yml
-# Ou configure manualmente:
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
+# Redis a correr localmente (ex.: redis-server) ou URL gerida (cloud)
+CELERY_BROKER_URL=redis://127.0.0.1:6379/0
+CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0
 ```
 
 ### Iniciar Workers

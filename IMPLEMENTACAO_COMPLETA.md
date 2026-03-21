@@ -1,7 +1,9 @@
 # Implementação Completa - PayPi-Bridge
 
 **Data**: 2025-01-30  
-**Status**: ✅ Estrutura de desenvolvimento completa
+**Status**: ✅ Estrutura de desenvolvimento completa  
+
+> **2026-03:** Removidos `docker-compose.yml` e `backend/Dockerfile` do repositório. O fluxo oficial é local / Railway sem imagem Docker no repo.
 
 ---
 
@@ -16,23 +18,7 @@
   - Organizadas por categoria
   - Comentários explicativos
 
-- **`docker-compose.yml`** - Orquestração completa
-  - PostgreSQL 15 (com healthcheck)
-  - Redis 7 (com healthcheck)
-  - Backend Django (com volumes e dependências)
-  - Volumes persistentes
-
-- **`backend/Dockerfile`** - Container do backend
-  - Python 3.11-slim
-  - Dependências do sistema
-  - Estrutura otimizada
-
-- **`scripts/setup.sh`** - Script de setup automatizado
-  - Criação de .env
-  - Inicialização de containers
-  - Instalação de dependências
-  - Migrações do banco
-  - Criação de superusuário
+- **`scripts/setup.sh`** - Setup local (venv, pip, migrate); requer Postgres/Redis conforme `.env`
 
 ---
 
@@ -145,7 +131,6 @@ PayPi-Bridge/
 │   │       ├── test_models.py ✅ (novo)
 │   │       └── test_views.py ✅ (novo)
 │   ├── requirements.txt ✅ (atualizado)
-│   └── Dockerfile ✅ (novo)
 ├── contracts/
 ├── docs/
 │   ├── architecture.mmd
@@ -156,7 +141,6 @@ PayPi-Bridge/
 ├── postman/
 ├── scripts/
 │   └── setup.sh ✅ (novo)
-├── docker-compose.yml ✅ (novo)
 ├── env.example ✅ (novo)
 ├── README.md ✅ (atualizado)
 └── ANALISE_E_PLANO_ACAO.md
@@ -186,12 +170,6 @@ PayPi-Bridge/
 - `POST /api/payouts/pix` - Criar pagamento Pix
 
 ### Infraestrutura
-
-✅ **Docker Compose completo**
-- PostgreSQL com healthcheck
-- Redis com healthcheck
-- Backend Django configurado
-- Volumes persistentes
 
 ✅ **Scripts de automação**
 - Setup automatizado
@@ -225,14 +203,14 @@ PayPi-Bridge/
 cp env.example .env
 # Editar .env
 
-# 2. Iniciar com Docker
-docker-compose up -d
-
-# 3. Ou usar script de setup
+# 2. Setup local
 ./scripts/setup.sh
 
-# 4. Acessar API
-curl http://localhost:9080/api/pi/balance
+# 3. Servidor
+cd backend && source .venv/bin/activate && python manage.py runserver
+
+# 4. API (porta local padrão 8000)
+curl http://127.0.0.1:8000/api/pi/status
 ```
 
 ### Desenvolvimento

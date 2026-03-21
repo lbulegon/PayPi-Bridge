@@ -1,52 +1,48 @@
 #!/bin/bash
-# Setup script for PayPi-Bridge development environment
+# Setup local (sem Docker): venv, dependências, migrações.
+# Requer PostgreSQL e (opcional) Redis acessíveis conforme .env.
 
 set -e
 
-echo "🚀 Setting up PayPi-Bridge development environment..."
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 
-# Check if .env exists
+echo "Setting up PayPi-Bridge (local)..."
+
 if [ ! -f .env ]; then
-    echo "📝 Creating .env file from env.example..."
+  if [ -f .env.example ]; then
+    echo "Creating .env from .env.example — edita com DB_* / DATABASE_URL e PI_*"
+    cp .env.example .env
+  elif [ -f env.example ]; then
     cp env.example .env
-    echo "⚠️  Please edit .env file with your credentials!"
+  else
+    echo "No .env.example found; create .env manually."
+  fi
 else
-    echo "✅ .env file already exists"
+  echo ".env already exists"
 fi
 
-# Check if Docker is running
-if ! docker info > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker and try again."
-    exit 1
-fi
-
-echo "🐳 Starting Docker containers..."
-docker-compose up -d db redis
-
-echo "⏳ Waiting for database to be ready..."
-sleep 5
-
-echo "📦 Installing Python dependencies..."
+echo "Installing Python dependencies..."
 cd backend
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
+if [ ! -d ".venv" ] && [ ! -d "venv" ]; then
+  python3 -m venv .venv
 fi
-source venv/bin/activate
+if [ -d ".venv" ]; then
+  # shellcheck source=/dev/null
+  source .venv/bin/activate
+else
+  # shellcheck source=/dev/null
+  source venv/bin/activate
+fi
 pip install -r requirements.txt
+cd "$ROOT"
+python3 scripts/sync_requirements.py 2>/dev/null || true
 
-echo "🗄️  Running database migrations..."
+echo "Running migrations..."
+cd backend
 python manage.py migrate
 
-echo "👤 Creating superuser (optional)..."
-echo "You can skip this by pressing Ctrl+C"
-python manage.py createsuperuser || true
-
-echo "✅ Setup complete!"
-echo ""
-echo "To start the development server:"
-echo "  cd backend"
-echo "  source venv/bin/activate"
+echo "Done."
+echo "  cd backend && source .venv/bin/activate  # ou venv"
 echo "  python manage.py runserver"
-echo ""
-echo "Or use Docker Compose:"
-echo "  docker-compose up backend"
+echo "  # outro terminal: celery -A config worker -l info  (se SETTLEMENT_ASYNC=1)"

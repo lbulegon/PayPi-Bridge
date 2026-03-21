@@ -1,56 +1,43 @@
 # Guia de Desenvolvimento - PayPi-Bridge
 
-## 🛠️ Configuração do Ambiente
-
-### Opção 1: Docker (Recomendado)
+## Configuração do ambiente (local)
 
 ```bash
-# 1. Configurar variáveis de ambiente
-cp env.example .env
-# Editar .env com suas credenciais
+# 1. Dependências de sistema (exemplo Debian/Ubuntu)
+sudo apt-get install -y postgresql-client python3-venv redis-server
 
-# 2. Iniciar serviços
-docker-compose up -d
+# 2. PostgreSQL: criar BD e utilizador (ou usar DATABASE_URL remota)
+# 3. Redis: garantir que corre em 127.0.0.1:6379 (ou ajustar CELERY_BROKER_URL)
 
-# 3. Ver logs
-docker-compose logs -f backend
+# 4. Variáveis
+cp .env.example .env
+# Editar .env (DB_*, PI_*, CELERY_*)
 
-# 4. Acessar API
-curl http://localhost:9080/api/pi/balance
-```
+# 5. venv e pacotes Python
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+python scripts/sync_requirements.py
 
-### Opção 2: Desenvolvimento Local
-
-```bash
-# 1. Instalar dependências do sistema
-sudo apt-get install postgresql-client python3-venv
-
-# 2. Criar ambiente virtual
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Instalar dependências Python
+# 6. Migrações e servidor
 cd backend
-pip install -r requirements.txt
-
-# 4. Configurar banco (usar Docker para PostgreSQL)
-docker-compose up -d db redis
-
-# 5. Configurar .env
-cp ../env.example ../.env
-# Editar .env
-
-# 6. Rodar migrações
 python manage.py migrate
-
-# 7. Criar superusuário
-python manage.py createsuperuser
-
-# 8. Rodar servidor
+python manage.py createsuperuser   # opcional
 python manage.py runserver
 ```
 
-## 📝 Estrutura de Código
+### Worker Celery (liquidação assíncrona)
+
+Noutro terminal, com o mesmo venv:
+
+```bash
+cd backend
+celery -A config worker -l info
+```
+
+Ver [SETTLEMENT_QUEUE.md](./SETTLEMENT_QUEUE.md). Sem Redis local: `CELERY_TASK_ALWAYS_EAGER=1` ou `SETTLEMENT_ASYNC=0`.
+
+## Estrutura de código
 
 ### Models
 
@@ -85,24 +72,22 @@ Clientes externos em `backend/app/paypibridge/clients/`:
 - `open_finance.py`: Cliente Open Finance (placeholder)
 - `pix.py`: Wrapper para Pix via Open Finance
 
-## 🧪 Executando Testes
+## Executando testes
 
 ```bash
-# Todos os testes
+cd backend
 python manage.py test
 
-# Testes específicos
 python manage.py test tests.paypibridge.test_models
 python manage.py test tests.paypibridge.test_views
 
-# Com cobertura
 pip install coverage
 coverage run --source='app' manage.py test
 coverage report
-coverage html  # Gera relatório HTML
+coverage html
 ```
 
-## 🔌 Integração Pi Network
+## Integração Pi Network
 
 O serviço `PiService` integra com o SDK `pi-python`:
 
@@ -111,15 +96,9 @@ from app.paypibridge.services.pi_service import get_pi_service
 
 pi_service = get_pi_service()
 
-# Verificar disponibilidade
 if pi_service.is_available():
-    # Obter saldo
     balance = pi_service.get_balance()
-    
-    # Verificar pagamento
     payment = pi_service.verify_payment(payment_id)
-    
-    # Criar pagamento A2U
     payment_id = pi_service.create_app_to_user_payment(
         user_uid="user_123",
         amount=Decimal("10.5"),
@@ -127,75 +106,41 @@ if pi_service.is_available():
     )
 ```
 
-## 🔐 Variáveis de Ambiente
+## Variáveis de ambiente
 
-Principais variáveis necessárias:
+### Obrigatórias (mínimo)
 
-### Obrigatórias
+- `DJANGO_SECRET_KEY` ou `DJANGO_SECRET`
+- Base de dados: `DATABASE_URL` ou `DB_*`
 
-- `PI_API_KEY`: API key da Pi Network
-- `PI_WALLET_PRIVATE_SEED`: Seed privada da carteira
-- `PI_NETWORK`: "Pi Network" ou "Pi Testnet"
-- `SECRET_KEY`: Django secret key
-- `DB_PASSWORD`: Senha do PostgreSQL
+### Pi Network
 
-### Opcionais (para funcionalidades específicas)
+- `PI_API_KEY`, `PI_WALLET_PRIVATE_SEED`, `PI_NETWORK`
 
-- `CCIP_WEBHOOK_SECRET`: Secret para validar webhooks
-- `OF_CLIENT_ID`: Cliente Open Finance
-- `OF_CLIENT_SECRET`: Secret Open Finance
-- `FX_API_KEY`: API key para câmbio
+### Opcionais
 
-## 📊 Banco de Dados
+- `CCIP_WEBHOOK_SECRET`, Open Finance (`OF_*`), `FX_API_KEY`
+- Celery: `CELERY_BROKER_URL`, `SETTLEMENT_ASYNC` — ver `.env.example`
 
-### Migrações
+## Banco de dados
 
 ```bash
-# Criar migração
+cd backend
 python manage.py makemigrations
-
-# Aplicar migrações
 python manage.py migrate
-
-# Ver status
 python manage.py showmigrations
 ```
 
-### Schema SQL
+O ficheiro `sql/schema.sql` é referência DDL; em desenvolvimento usa-se sobretudo **migrações Django**.
 
-O schema inicial está em `sql/schema.sql` e é aplicado automaticamente pelo Docker.
+## Debugging
 
-## 🐛 Debugging
+- Ajustar `LOG_LEVEL` / logging em `config/settings.py` ou variáveis do projeto.
+- `python manage.py shell` para inspecionar models e serviços.
 
-### Logs
-
-```bash
-# Logs do Docker
-docker-compose logs -f backend
-
-# Logs do Django (desenvolvimento)
-# Configurar LOG_LEVEL=DEBUG no .env
-```
-
-### Django Shell
-
-```bash
-python manage.py shell
-
-# Exemplo de uso
-from app.paypibridge.models import PaymentIntent
-from app.paypibridge.services.pi_service import get_pi_service
-
-# Listar intents
-PaymentIntent.objects.all()
-
-# Testar Pi service
-pi_service = get_pi_service()
-pi_service.get_balance()
-```
-
-## 📚 Recursos Adicionais
+## Recursos adicionais
 
 - [Análise e Plano de Ação](../ANALISE_E_PLANO_ACAO.md)
 - [README Principal](../README.md)
-- [Diagramas](./architecture.mmd, ./sequence.mmd)
+- [Fila Celery / liquidação](./SETTLEMENT_QUEUE.md)
+- Diagramas em `docs/architecture.mmd`, `docs/sequence.mmd`

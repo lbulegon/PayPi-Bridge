@@ -36,7 +36,7 @@ O PayPi-Bridge pode entrar nessa tabela como mais um serviço, com URL fixa e (o
 
 **Vantagens:** um único lugar para subir/parar tudo; rede interna; fácil de documentar como “serviço SinapUm”.
 
-**Desafio:** adaptar o `docker-compose.yml` e o `Dockerfile` do PayPi-Bridge para esse contexto (porta, rede, env, e eventualmente DB/Redis compartilhados ou separados).
+**Nota:** o repositório PayPi-Bridge **não** inclui `Dockerfile` nem `docker-compose` próprios; para correr dentro do compose do Core defines um serviço que execute `gunicorn`/`start.sh` ou `runserver` a partir do código clonado, com `DATABASE_URL` / Redis apontando para os serviços do stack SinapUm (porta, rede, env).
 
 ---
 

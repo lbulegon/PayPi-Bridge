@@ -13,7 +13,7 @@
 | Linguagem | Python **3.11** (`runtime.txt`: 3.11.9) |
 | Framework | **Django 5+**, **Django REST Framework** |
 | Servidor HTTP (produção) | **Gunicorn** (`backend/start.sh`: bind `0.0.0.0:$PORT`) |
-| Servidor (dev Docker) | `runserver 0.0.0.0:8000` |
+| Servidor (dev local) | `python manage.py runserver` |
 | Estáticos | **WhiteNoise** + `collectstatic` no arranque |
 | API docs | **drf-spectacular** → `/api/schema/swagger-ui/` |
 
@@ -21,13 +21,13 @@
 
 ## 2. Serviços e dependências
 
-| Serviço | Função | Dev local (Docker Compose) | Produção típica (Railway) |
-|---------|--------|----------------------------|---------------------------|
-| **PostgreSQL 15** | BD principal Django | Serviço `db`, sem porta exposta no host; init com `sql/schema.sql` | Plugin PostgreSQL ou `DATABASE_URL` |
-| **Redis 7** | Broker/resultado Celery, cache FX | Serviço `redis`, rede interna | Serviço Redis separado (variáveis `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND`) |
-| **Processo web** | HTTP API + páginas HTML em `config/urls.py` | Porta host **9080** → container 8000 | `$PORT` definido pela plataforma |
-| **Celery worker** | Tarefas assíncronas (webhooks Pi, Soroban, Pix, FX) | **Não** está no `docker-compose.yml` atual | **Serviço separado** recomendado: `celery -A config worker` e **beat** para agendamentos |
-| **Celery Beat** | `monitor_soroban_events` (30s), `process_incomplete_payments` (5min), `update_fx_rates` (5min) | Idem | Idem — sem beat, tarefas periódicas não correm |
+| Serviço | Função | Dev local | Produção típica (Railway) |
+|---------|--------|-----------|---------------------------|
+| **PostgreSQL 15** | BD principal Django | Instância local ou URL remota; migrações Django | Plugin PostgreSQL ou `DATABASE_URL` |
+| **Redis 7** | Broker/resultado Celery, cache FX | `redis-server` local ou URL remota | Serviço Redis (variáveis `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND`) |
+| **Processo web** | HTTP API + páginas HTML em `config/urls.py` | `runserver` (porta local à escolha) | `$PORT` definido pela plataforma |
+| **Celery worker** | Tarefas assíncronas (webhooks Pi, Soroban, Pix, FX) | `celery -A config worker` num terminal separado | **Serviço separado** recomendado: mesmo comando + **beat** para agendamentos |
+| **Celery Beat** | `monitor_soroban_events` (30s), `process_incomplete_payments` (5min), `update_fx_rates` (5min) | Opcional em dev | Sem beat em prod, tarefas periódicas não correm |
 
 ---
 
@@ -43,12 +43,10 @@
 
 ---
 
-## 4. Docker Compose (desenvolvimento)
+## 4. Desenvolvimento local (sem Compose no repo)
 
-- Ficheiro: **`docker-compose.yml`** (raiz).
-- Serviços: `db` (Postgres), `redis`, `backend` (build `backend/Dockerfile`).
-- Backend: `env_file: .env`, `DB_HOST=db`, `REDIS_HOST=redis` (sobrescritos no compose).
-- Healthchecks: Postgres, Redis, e backend via `curl` em `/health/` (URL Django em `config/urls.py`, não confundir com `GET /api/health` do DRF).
+- Postgres e Redis instalados ou geridos na cloud; venv Python; `manage.py runserver` + worker Celery quando necessário.
+- Ver `README.md` e `docs/DEVELOPMENT.md`.
 
 ---
 
@@ -56,7 +54,7 @@
 
 - **Preferido em PaaS:** `DATABASE_URL` (postgresql…); parsing em `settings.py` com `sslmode` automático (`disable` para host `.railway.internal`, `require` caso contrário se não houver override).
 - **Alternativa:** `DB_*` ou variáveis **`PG*`** (libpq), com `CONN_MAX_AGE=600`.
-- Migrações: Django (`app.paypibridge` + apps contrib). SQL legado em `sql/schema.sql` para init do container Postgres.
+- Migrações: Django (`app.paypibridge` + apps contrib). `sql/schema.sql` como referência DDL legada.
 
 ---
 
@@ -91,7 +89,7 @@
 
 ## 9. Endpoints de saúde (dois níveis)
 
-- **`GET /health/`** — resposta simples JSON (`ok`), usado pelo healthcheck do Docker Compose.
+- **`GET /health/`** — resposta simples JSON (`ok`); útil para probes de plataforma.
 - **`GET /api/health`** — health agregado (Pi, OF, Soroban, DB, cache, Celery, etc.).
 
 ---
