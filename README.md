@@ -162,6 +162,7 @@ coverage report
 
 ## 📚 Documentação
 
+- **[Evolução V2 / V3 e Pix OpenPix](./docs/EVOLUCAO_V2_V3_OPENPIX.md)** — multi-tenant, ledger, partidas dobradas, retry, idempotência, antifraude e liquidação via OpenPix
 - [Análise e Plano de Ação](./ANALISE_E_PLANO_ACAO.md) - Análise completa do projeto
 - [Payment Trust Engine](./docs/PAYMENT_TRUST_ENGINE.md) - Pi Platform + Horizon opcional
 - [Settlement Engine](./docs/SETTLEMENT_ENGINE.md) - Liquidação Pi → BRL → Pix
@@ -185,6 +186,10 @@ Integração com Open Banking Brasil:
 - Payments Initiation API (Pix)
 - Accounts/Transactions API (reconciliação)
 - Consent Management
+
+### Pix via OpenPix (Woovi)
+
+Liquidação opcional com API OpenPix (`PIX_PROVIDER=openpix`). Ver [docs/EVOLUCAO_V2_V3_OPENPIX.md](./docs/EVOLUCAO_V2_V3_OPENPIX.md) e variáveis em `env.example`.
 
 ### Soroban (Stellar)
 
@@ -261,4 +266,4 @@ Veja [backend/app/bridge/README.md](backend/app/bridge/README.md) para documenta
 
 ---
 
-**Última atualização**: 2026-02-07
+**Última atualização**: 2026-04-19 (ledger V2/V3, OpenPix — ver [docs/EVOLUCAO_V2_V3_OPENPIX.md](./docs/EVOLUCAO_V2_V3_OPENPIX.md))

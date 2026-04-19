@@ -251,7 +251,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "app.paypibridge.tasks.update_fx_rates",
         "schedule": 300.0,  # Every 5 minutes
     },
+    "process-retry-tasks": {
+        "task": "app.paypibridge.tasks.process_retry_tasks",
+        "schedule": 60.0,
+    },
 }
+
+# Antifraude (v3): valor máximo Pi por intent; intents por tenant / hora
+FRAUD_MAX_PI_SINGLE = os.getenv("FRAUD_MAX_PI_SINGLE", "10000")
+FRAUD_MAX_INTENTS_PER_HOUR = int(os.getenv("FRAUD_MAX_INTENTS_PER_HOUR", "120"))
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

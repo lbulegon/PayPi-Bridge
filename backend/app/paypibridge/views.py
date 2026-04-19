@@ -15,7 +15,8 @@ from django_ratelimit.decorators import ratelimit
 from django.utils.decorators import method_decorator
 
 from django.contrib.auth import get_user_model
-from .models import PaymentIntent, PixTransaction, Consent, BankAccount, WebhookEvent
+from django.db import transaction
+from .models import PaymentIntent, PixTransaction, Consent, BankAccount, WebhookEvent, Tenant, Wallet
 
 logger = logging.getLogger(__name__)
 from .serializers import (
@@ -27,6 +28,9 @@ from .serializers import (
 )
 from .clients.pix import PixClient
 from .services.settlement_service import SettlementService
+from .services.ledger_service import credit_pi_for_verified_intent, ensure_wallet
+from .services.fraud_service import evaluate_intent_creation
+from .services.tenant_webhook import notify_payment_intent_webhook
 from .tasks import process_settlement_execute
 from .services.pi_service import get_pi_service
 from .services.payment_orchestrator import PaymentTrustOrchestrator, get_ledger_verifier
@@ -71,6 +75,30 @@ class IntentView(views.APIView):
         fx_quote = fx_service.get_quote(data["amount_pi"])
         amount_brl = fx_service.convert(data["amount_pi"]) if fx_quote.get('rate') else None
         
+        tenant = None
+        key = (request.headers.get("X-PayPi-Tenant-Key") or "").strip() or (
+            (data.get("tenant_api_key") or "").strip() if isinstance(data.get("tenant_api_key"), str) else ""
+        )
+        if key:
+            tenant = Tenant.objects.filter(api_key=key).first()
+            if not tenant:
+                return Response(
+                    {"detail": "Invalid tenant API key"},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+        decision, reason = evaluate_intent_creation(tenant, data["amount_pi"])
+        if decision == "blocked":
+            return Response(
+                {"detail": reason or "blocked", "code": "fraud_blocked"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if decision == "manual_review":
+            return Response(
+                {"detail": reason or "manual_review", "code": "manual_review"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Create PaymentIntent
         intent = PaymentIntent.objects.create(
             intent_id=f"pi_{int(timezone.now().timestamp() * 1000)}",
@@ -80,6 +108,8 @@ class IntentView(views.APIView):
             amount_brl=amount_brl,
             fx_quote=fx_quote,
             metadata=data.get("metadata", {}),
+            tenant=tenant,
+            payment_type=data.get("payment_type", PaymentIntent.PAY_ONE_TIME),
         )
         
         return Response(PaymentIntentSerializer(intent).data, status=status.HTTP_201_CREATED)
@@ -104,6 +134,40 @@ class IntentListView(views.APIView):
             for i in intents
         ]
         return Response(data)
+
+
+class TenantWalletView(views.APIView):
+    """
+    Saldos internos PI/BRL do tenant (wallet + ledger como fonte de verdade do saldo).
+    Autenticação: header X-PayPi-Tenant-Key.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        key = (request.headers.get("X-PayPi-Tenant-Key") or "").strip()
+        if not key:
+            return Response(
+                {"detail": "Missing X-PayPi-Tenant-Key header"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        tenant = Tenant.objects.filter(api_key=key).first()
+        if not tenant:
+            return Response(
+                {"detail": "Invalid tenant API key"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        pi = ensure_wallet(tenant, Wallet.ASSET_PI)
+        brl = ensure_wallet(tenant, Wallet.ASSET_BRL)
+        return Response(
+            {
+                "tenant_slug": tenant.slug,
+                "wallets": [
+                    {"asset": pi.asset, "balance": str(pi.balance)},
+                    {"asset": brl.asset, "balance": str(brl.balance)},
+                ],
+            }
+        )
 
 
 class VerifyPiPaymentView(views.APIView):
@@ -193,7 +257,13 @@ class VerifyPiPaymentView(views.APIView):
             intent.confidence_level = trust["confidence_level"]
             intent.ledger_checked = trust["ledger_checked"]
             intent.verified_at = timezone.now()
-            intent.save()
+            intent.external_pi_id = payment_id
+            intent.status = "CONFIRMED"
+            with transaction.atomic():
+                intent.save()
+                credit_pi_for_verified_intent(intent)
+
+            notify_payment_intent_webhook(intent)
 
             return Response({
                 "intent_id": intent.intent_id,

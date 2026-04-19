@@ -124,6 +124,12 @@ class CreateIntentSerializer(serializers.Serializer):
     payee_user_id = serializers.IntegerField()
     amount_pi = serializers.DecimalField(max_digits=20, decimal_places=8)
     metadata = serializers.DictField(required=False)
+    tenant_api_key = serializers.CharField(required=False, allow_blank=True, max_length=128)
+    payment_type = serializers.ChoiceField(
+        required=False,
+        choices=("one_time", "subscription"),
+        default="one_time",
+    )
 
     def validate_payee_user_id(self, value):
         if not get_user_model().objects.filter(id=value).exists():

@@ -513,3 +513,26 @@ def process_pi_webhook_event(self, event_data: dict):
             extra={'event_data': event_data}
         )
         raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+
+
+@shared_task
+def process_retry_tasks():
+    """
+    Processa fila RetryTask (backoff exponencial).
+    Registar handlers por task_type quando integrações precisarem de retry persistente.
+    """
+
+    def _handle(task):
+        from app.paypibridge.models import RetryTask as RT
+
+        logger.info(
+            "retry_task_no_handler",
+            extra={"task_id": task.id, "task_type": task.task_type},
+        )
+        task.status = RT.ST_FAILED
+        task.last_error = "handler_not_implemented"
+        task.save(update_fields=["status", "last_error", "updated_at"])
+
+    from app.paypibridge.services.retry_service import process_pending_retries
+
+    return process_pending_retries(_handle)

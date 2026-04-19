@@ -6,22 +6,20 @@ Só deve correr após pagamento Pi validado (ex.: verified_at preenchido).
 from __future__ import annotations
 
 import logging
-import os
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
 
 from django.utils import timezone
 
-from app.paypibridge.models import Consent, PaymentIntent, PixTransaction
+from app.paypibridge.models import Consent, PaymentIntent, PixTransaction, Settlement
 
 from .pricing_service import get_pricing_service
 from .settlement_pix_port import SettlementPixPort
+from .ledger_service import apply_settlement_ledger, get_active_fee_rate
+from .tenant_webhook import notify_payment_intent_webhook
 
 logger = logging.getLogger(__name__)
-
-# Taxa de serviço sobre o bruto em BRL (0.05 = 5%). Default 0 para não surpreender em prod.
-_SETTLEMENT_FEE_RATE = Decimal(os.getenv("SETTLEMENT_FEE_RATE", "0"))
 
 
 @dataclass
@@ -72,7 +70,7 @@ class SettlementService:
                 False, None, None, None, None, "fx_unavailable"
             )
 
-        fee = (gross * _SETTLEMENT_FEE_RATE).quantize(Decimal("0.01"))
+        fee = (gross * get_active_fee_rate()).quantize(Decimal("0.01"))
         net = (gross - fee).quantize(Decimal("0.01"))
         if net <= 0:
             return SettlementResult(
@@ -130,6 +128,40 @@ class SettlementService:
                 "status",
                 "metadata",
             ]
+        )
+
+        Settlement.objects.update_or_create(
+            payment_intent=intent,
+            defaults={
+                "amount_brl": net,
+                "status": Settlement.ST_COMPLETED,
+                "pix_txid": txid,
+                "error_message": "",
+            },
+        )
+        try:
+            apply_settlement_ledger(
+                intent,
+                gross_brl=gross,
+                fee_brl=fee,
+                net_brl=net,
+            )
+        except Exception as exc:
+            logger.exception(
+                "Settlement ledger post-process failed (Pix already sent): %s",
+                exc,
+                extra={"intent_id": intent.intent_id},
+            )
+
+        notify_payment_intent_webhook(
+            intent,
+            {
+                "event": "payment_settled",
+                "gross_brl": str(gross),
+                "fee_brl": str(fee),
+                "net_brl": str(net),
+                "pix_txid": txid,
+            },
         )
 
         logger.info(

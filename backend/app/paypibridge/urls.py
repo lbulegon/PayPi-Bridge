@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    IntentView, IntentListView, CCIPWebhookView, PixPayoutView,
+    IntentView, IntentListView, TenantWalletView, CCIPWebhookView, PixPayoutView,
     SettlementExecuteView,
     VerifyPiPaymentView, PiBalanceView, PiStatusView,
     ConsentView, ConsentDetailView,
@@ -10,6 +10,7 @@ from .views import (
     AdminStatsView, AdminIntentsView,
     LedgerTransactionAuditView,
 )
+from .views_v3 import V3PaymentCreateView, V3BalanceView, V3WithdrawView
 from .auth_views import (
     RegisterView,
     LoginView,
@@ -33,6 +34,10 @@ urlpatterns = [
     # PaymentIntent
     path("checkout/pi-intent", IntentView.as_view(), name="create-intent"),
     path("intents", IntentListView.as_view(), name="list-intents"),
+    path("v2/tenant/wallets", TenantWalletView.as_view(), name="tenant-wallets"),
+    path("v3/payments", V3PaymentCreateView.as_view(), name="v3-payments"),
+    path("v3/balance", V3BalanceView.as_view(), name="v3-balance"),
+    path("v3/withdraw", V3WithdrawView.as_view(), name="v3-withdraw"),
     path("payments/verify", VerifyPiPaymentView.as_view(), name="verify-payment"),
     path(
         "payments/ledger/<str:txid>",

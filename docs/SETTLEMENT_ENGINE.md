@@ -1,5 +1,7 @@
 # Motor de liquidação (Pi → BRL → Pix)
 
+> **Atualização:** taxa configurável (`FeeConfig` / `get_active_fee_rate`), ledger multi-tenant (V2/V3) e Pix via **OpenPix** (`PIX_PROVIDER=openpix`) estão documentados em [EVOLUCAO_V2_V3_OPENPIX.md](./EVOLUCAO_V2_V3_OPENPIX.md).
+
 ## Fluxo
 
 1. **PaymentIntent** criado (`POST /api/checkout/pi-intent`).
@@ -11,7 +13,7 @@ O serviço:
 
 - Converte `amount_pi` → BRL com **FXService** (mesma config que o resto do projeto).
 - Aplica **SETTLEMENT_FEE_RATE** (env, default `0`) sobre o bruto em BRL.
-- Envia **Pix** pelo **SettlementPixPort**: mock se `OF_USE_MOCK=true`, senão **PixClient** (Open Finance).
+- Envia **Pix** pelo **SettlementPixPort**: **OpenPix** se `PIX_PROVIDER=openpix` e credenciais válidas; senão mock se `OF_USE_MOCK=true`; caso contrário **PixClient** (Open Finance).
 
 ## Campos em `PaymentIntent`
 
